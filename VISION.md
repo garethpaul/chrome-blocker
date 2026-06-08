@@ -1,5 +1,8 @@
 ## Chrome Blocker Vision
 
+This document explains the current state and direction of the project.
+Project overview and developer docs: [`README.md`](README.md)
+
 Chrome Blocker is a small Chrome extension for blocking websites during focused
 work.
 
