@@ -1,5 +1,8 @@
 # Chrome Blocker
 
+<!-- README-OVERVIEW-IMAGE -->
+![Project overview](docs/readme-overview.svg)
+
 Chrome Blocker is a small Manifest V2 Chrome extension for blocking distracting
 websites during focused work. It stores the block list in local Chrome storage
 and redirects blocked HTTP(S) page loads to `blockedSite.html`.
