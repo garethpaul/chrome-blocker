@@ -35,6 +35,11 @@ Contribution rules:
 
 ## Security And Privacy
 
+Canonical security policy and reporting:
+
+- [`SECURITY.md`](SECURITY.md)
+
+
 This extension can observe and redirect browser navigation. It must not send
 visited URLs, block-list entries, or tab state to external services.
 
