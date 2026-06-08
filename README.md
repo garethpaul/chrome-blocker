@@ -89,4 +89,4 @@ Keep changes small and tied to the project that is already present in this repos
 
 Prior README summary:
 
-> Chrome Blocker <!-- README-OVERVIEW-IMAGE --> Chrome Blocker is a small Manifest V2 Chrome extension for blocking distracting websites during focused work. It stores the block list in local Chrome storage and redirects blocked HTTP(S) page loads to `blockedSite.html`. Install Locally 1. Open `chrome://extensions`. 2. Enable developer mode.
+> Chrome Blocker Chrome Blocker is a small Manifest V2 Chrome extension for blocking distracting websites during focused work. It stores the block list in local Chrome storage and redirects blocked HTTP(S) page loads to `blockedSite.html`. Install Locally 1. Open `chrome://extensions`. 2. Enable developer mode.
