@@ -16,7 +16,7 @@
   },
 
   "background": {
-    "scripts": ["js/background.js"]
+    "scripts": ["js/urlRules.js", "js/background.js"]
   },
   "content_scripts": [
     {

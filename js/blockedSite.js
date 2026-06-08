@@ -1,20 +1,26 @@
-var site = document.URL;
-site = site.substring(site.indexOf("?"));
-site = site.substring(site.indexOf("=") + 1);
-$("#blockMessage").text(site + " has been Blacklisted.");
+var site = getBlockedOriginFromSearch(window.location.search);
+if (site === "") {
+  $("#blockMessage").text("This site has been blocked.");
+} else {
+  $("#blockMessage").text(site + " has been blacklisted.");
+}
 
 var content = $("#countdown");
 var i = 15;
 var interval = 0;
 
 function updateCountdown() {
+  if (site === "") {
+    return;
+  }
+
   content.text("Unlisting " + site + " in " + --i + " seconds...");
   if (i == 0) {
     clearInterval(interval);
     chrome.tabs.getCurrent(function(tab) {
       chrome.extension.getBackgroundPage().unlistSite(tab.id, site);
     });
-    window.location = site;
+    window.location.href = site;
   }
 }
 
@@ -35,13 +41,12 @@ function hideModal() {
 $("#unlistModal").on('hidden', modalHidden);
 $("#cancelUnlist").click(hideModal);
 
-chrome.extension.onMessage.addListener(
+chrome.runtime.onMessage.addListener(
     function(message, sender, sendResponse) {
   chrome.tabs.getCurrent(function(tab) {
-    if (tab.id == message) {
+    if (site !== "" && tab.id == message) {
       $("#unlistModal").modal("show");
       beginCountdown();
     }
   });
 });
-

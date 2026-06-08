@@ -1,43 +1,44 @@
 var tabState = 0;
 
-function clearBlacklist() {
-  chrome.storage.local.set( {blocked: []}, function() {
-    console.log("Blacklist cleared");
+function getCurrentTab(callback) {
+  chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+    if (tabs && tabs.length > 0) {
+      callback(tabs[0]);
+    }
   });
+}
+
+function clearBlacklist() {
   chrome.extension.getBackgroundPage().clearBlacklist();
 }
 
 function unlist() {
-  chrome.tabs.getSelected(null, function(tab) {
-    chrome.extension.sendMessage(tab.id);
+  getCurrentTab(function(tab) {
+    chrome.runtime.sendMessage(tab.id);
   });
 }
 
 function blacklistSite() {
-  console.log("Blacklist site clicked");
   chrome.storage.local.get("blocked", function(items) {
-    var blockedSites = [];
-    if (items.blocked)
-      blockedSites = items.blocked;
+    var blockedSites = normalizeBlockedList(items.blocked);
 
-    console.log("blocked sites is: " + blockedSites);
+    getCurrentTab(function(tab) {
+      chrome.tabs.sendMessage(tab.id, {action: "geturl"}, function(response) {
+        if (chrome.runtime.lastError || !response || !response.URL) {
+          return;
+        }
 
-    chrome.tabs.getSelected(null, function(tab) {
-      chrome.tabs.sendMessage(tab.id, {action: "geturl"} , function(response) {
-        console.log("BLOCKING SITE " + response.URL);
+        var urlToBlock = normalizeBlockedOrigin(response.URL);
+        if (urlToBlock === "") {
+          return;
+        }
 
-        var urlToBlock = /.*\/\/.*?\//.exec(response.URL)[0];
-        console.log("Root URL is " + urlToBlock);
-
-        if (urlToBlock != "" && blockedSites.indexOf(urlToBlock) == -1) { 
-
-          blockedSites.push(urlToBlock); 
+        if (blockedSites.indexOf(urlToBlock) === -1) {
+          blockedSites.push(urlToBlock);
 
           chrome.extension.getBackgroundPage().addBlockedSite(tab.id, urlToBlock);
 
-          chrome.storage.local.set( {blocked: blockedSites}, function() {
-            console.log("Site Blocked");
-          });
+          chrome.storage.local.set({blocked: blockedSites});
         }
         chrome.tabs.sendMessage(tab.id, {action: "redirect", blockedSite: urlToBlock});
       });
@@ -47,9 +48,9 @@ function blacklistSite() {
 
 var triggered = 0;
 if (triggered ++ == 0) {
-  chrome.tabs.getSelected(null, function(tab) {
+  getCurrentTab(function(tab) {
     tabState = chrome.extension.getBackgroundPage().getTabState(tab.id);
-    var button = $("#blacklistButton")
+    var button = $("#blacklistButton");
     if (tabState == 0) {
       button.click(blacklistSite);
       button.text("Blacklist site");
