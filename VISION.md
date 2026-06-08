@@ -46,3 +46,6 @@ Permission changes need a clear purpose, minimal scope, and documentation.
 - Additional broad permissions without a documented need
 - Manifest migration mixed with unrelated feature work
 - URL matching changes that silently over-block sites
+
+This list is a roadmap guardrail, not a permanent rule.
+Strong user demand and strong technical rationale can change it.
