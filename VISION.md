@@ -40,7 +40,7 @@ visited URLs, block-list entries, or tab state to external services.
 
 Permission changes need a clear purpose, minimal scope, and documentation.
 
-## What We Will Not Merge For Now
+## What We Will Not Merge (For Now)
 
 - Remote telemetry, analytics, or synced block lists
 - Additional broad permissions without a documented need
