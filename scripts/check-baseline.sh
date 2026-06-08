@@ -11,12 +11,17 @@ URL_RULES="$ROOT_DIR/js/urlRules.js"
 README="$ROOT_DIR/README.md"
 PLAN="$ROOT_DIR/docs/plans/2026-06-08-chrome-blocker-url-baseline.md"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
   fi
 done
+
+if ! grep -Fq "Chrome Blocker Changes" "$ROOT_DIR/CHANGES.md"; then
+  printf '%s\n' "CHANGES.md must identify the project." >&2
+  exit 1
+fi
 
 if ! grep -Fq '"scripts": ["js/urlRules.js", "js/background.js"]' "$MANIFEST"; then
   printf '%s\n' "Manifest must load URL rules before the background worker." >&2
@@ -80,6 +85,26 @@ fi
 
 if ! grep -Fq "node scripts/test-url-rules.js" "$README"; then
   printf '%s\n' "README must document the URL rule test." >&2
+  exit 1
+fi
+
+if ! grep -Fq "scripts/check-baseline.sh" "$README"; then
+  printf '%s\n' "README must document the source baseline check." >&2
+  exit 1
+fi
+
+if ! grep -Fq "chrome://extensions" "$README"; then
+  printf '%s\n' "README must document local unpacked-extension installation." >&2
+  exit 1
+fi
+
+if ! grep -Fq "normalized HTTP(S) origin matching" "$README"; then
+  printf '%s\n' "README must document the URL-rule safety baseline." >&2
+  exit 1
+fi
+
+if ! grep -Fq "CHANGES.md" "$README"; then
+  printf '%s\n' "README must point to CHANGES.md." >&2
   exit 1
 fi
 

@@ -1,7 +1,9 @@
-# Changes
+# Chrome Blocker Changes
 
 ## 2026-06-08
 
+- Restored README verification notes for the URL-rule test and extension
+  source baseline after the generated project overview refresh.
 - Added exact-origin URL rule utilities and Node coverage for normalization,
   deduplication, redirect-parameter parsing, and lookalike-host safety.
 - Replaced user-controlled regular expression matching with normalized HTTP(S)

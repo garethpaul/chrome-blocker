@@ -43,11 +43,22 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 
 ## Running or Using the Project
 
-- No single runtime entry point was identified. Start by reading the source files and manifests listed above.
+Load the extension unpacked from this directory:
+
+1. Open `chrome://extensions`.
+2. Enable developer mode.
+3. Choose "Load unpacked" and select this repository root.
 
 ## Testing and Verification
 
-- No dedicated automated test command was identified from the checked-in files. Verify changes by running the relevant build or manually exercising the sample.
+Run the SDK-free source baseline and URL-rule tests:
+
+```sh
+scripts/check-baseline.sh
+node scripts/test-url-rules.js
+```
+
+The URL-rule baseline verifies normalized HTTP(S) origin matching, rejected lookalike hosts, block-list deduplication, and encoded redirect parameters for `blockedSite.html`.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -68,6 +79,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
 
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
+- See `CHANGES.md` for the maintenance history.
 
 ## Contributing
 
