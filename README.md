@@ -86,6 +86,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   `blockedSite.html` URLs.
 - The background page owns block-list storage writes; the popup delegates new
   blocked origins instead of writing the same list twice.
+- The background add and unblock paths use centralized tab state writes so
+  invalid tab ids cannot create stray per-tab entries.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `CHANGES.md` for the maintenance history.
@@ -93,6 +95,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   verification wrapper baseline.
 - See `docs/plans/2026-06-09-chrome-blocker-content-redirect-validation.md`
   for the content-script redirect validation baseline.
+- See `docs/plans/2026-06-09-chrome-blocker-background-tab-state-writes.md`
+  for the background tab-state write baseline.
 
 ## Contributing
 

@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Routed background add and unblock tab-state writes through the centralized
+  valid-tab-id helper.
 - Removed the popup's duplicate block-list storage write so background
   `addBlockedSite` remains the single persistence owner.
 - Normalized content-script redirect message payloads before constructing

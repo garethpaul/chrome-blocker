@@ -21,6 +21,7 @@ Priority:
 - Keep the block list local to the browser
 - Keep block-list persistence owned by background extension state
 - Keep per-tab blocking state scoped to live browser tabs
+- Keep background tab-state writes behind the valid-tab-id helper
 - Validate redirect message payloads before constructing extension URLs
 - Make host, tab, storage, webRequest, and navigation permissions explicit
 - Avoid adding tracking or remote configuration

@@ -28,6 +28,11 @@ if [ ! -f "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-background-storage-own
   exit 1
 fi
 
+if [ ! -f "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-background-tab-state-writes.md" ]; then
+  printf '%s\n' "Chrome blocker background tab state write plan is missing." >&2
+  exit 1
+fi
+
 if ! grep -Fq "Chrome Blocker Changes" "$ROOT_DIR/CHANGES.md"; then
   printf '%s\n' "CHANGES.md must identify the project." >&2
   exit 1
@@ -70,6 +75,12 @@ fi
 
 if ! grep -Fq "if (isValidTabId(tabid))" "$BACKGROUND"; then
   printf '%s\n' "Background state writes must ignore invalid tab ids." >&2
+  exit 1
+fi
+
+if ! grep -Fq "setTabBlockingState(tabid, normalizedSite)" "$BACKGROUND" ||
+  ! grep -Fq "setTabBlockingState(tabid, 0)" "$BACKGROUND"; then
+  printf '%s\n' "Background add/unlist paths must use centralized tab state writes." >&2
   exit 1
 fi
 
@@ -199,6 +210,11 @@ if ! grep -Fq "background page owns block-list storage writes" "$README"; then
   exit 1
 fi
 
+if ! grep -Fq "background add and unblock paths use centralized tab state writes" "$README"; then
+  printf '%s\n' "README must document centralized background tab-state writes." >&2
+  exit 1
+fi
+
 if ! grep -Fq "Status: Completed" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-tab-state-cleanup.md"; then
   printf '%s\n' "Chrome blocker tab state cleanup plan must record completed status." >&2
   exit 1
@@ -226,6 +242,16 @@ fi
 
 if ! grep -Fq "make check" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-background-storage-owner.md"; then
   printf '%s\n' "Chrome blocker background storage owner plan must record make check verification." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-background-tab-state-writes.md"; then
+  printf '%s\n' "Chrome blocker background tab state write plan must record completed status." >&2
+  exit 1
+fi
+
+if ! grep -Fq "make check" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-background-tab-state-writes.md"; then
+  printf '%s\n' "Chrome blocker background tab state write plan must record make check verification." >&2
   exit 1
 fi
 

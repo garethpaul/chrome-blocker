@@ -16,7 +16,7 @@ function addBlockedSite(tabid, blockedSite) {
     blockedSites.push(normalizedSite);
     chrome.storage.local.set({blocked: blockedSites});
   }
-  tabBlockingMap[tabid] = normalizedSite;
+  setTabBlockingState(tabid, normalizedSite);
 }
 
 function unlistSite(tabid, site) {
@@ -25,7 +25,7 @@ function unlistSite(tabid, site) {
   if (i > -1)
     blockedSites.splice(i, 1);
   chrome.storage.local.set({blocked: blockedSites});
-  tabBlockingMap[tabid] = 0;
+  setTabBlockingState(tabid, 0);
 }
 
 function clearBlacklist() {
