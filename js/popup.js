@@ -1,8 +1,12 @@
 var tabState = 0;
 
+function hasValidTabId(tab) {
+  return tab && typeof tab.id === "number";
+}
+
 function getCurrentTab(callback) {
   chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-    if (tabs && tabs.length > 0) {
+    if (tabs && tabs.length > 0 && hasValidTabId(tabs[0])) {
       callback(tabs[0]);
     }
   });

@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Guarded popup active-tab lookup before reading background tab state or
+  messaging content scripts.
 - Guarded blocked-page current-tab lookups before unlisting a site or showing
   the unblock countdown modal.
 - Moved the blocked-page return redirect into the guarded unlist path.

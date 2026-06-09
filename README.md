@@ -91,6 +91,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - The blocked page validates the current tab before unlisting a site or showing
   the unblock countdown.
 - The blocked page redirects back only after the guarded unlist path runs.
+- The popup validates the active tab id before messaging content scripts or
+  reading background tab state.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `CHANGES.md` for the maintenance history.
@@ -104,6 +106,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   blocked-page current-tab guard.
 - See `docs/plans/2026-06-09-chrome-blocker-blocked-page-redirect-guard.md` for
   the blocked-page redirect guard.
+- See `docs/plans/2026-06-09-chrome-blocker-popup-tab-guard.md` for the popup
+  current-tab guard.
 
 ## Contributing
 

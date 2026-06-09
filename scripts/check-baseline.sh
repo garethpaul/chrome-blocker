@@ -12,8 +12,9 @@ README="$ROOT_DIR/README.md"
 PLAN="$ROOT_DIR/docs/plans/2026-06-08-chrome-blocker-url-baseline.md"
 BLOCKED_PAGE_TAB_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-blocked-page-tab-guard.md"
 BLOCKED_PAGE_REDIRECT_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-blocked-page-redirect-guard.md"
+POPUP_TAB_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-popup-tab-guard.md"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -108,6 +109,16 @@ fi
 
 if ! grep -Fq "chrome.extension.getBackgroundPage().addBlockedSite(tab.id, urlToBlock)" "$POPUP"; then
   printf '%s\n' "Popup must delegate block-list persistence to the background page." >&2
+  exit 1
+fi
+
+if ! grep -Fq "function hasValidTabId(tab)" "$POPUP"; then
+  printf '%s\n' "Popup must centralize current-tab id validation." >&2
+  exit 1
+fi
+
+if ! grep -Fq "hasValidTabId(tabs[0])" "$POPUP"; then
+  printf '%s\n' "Popup current-tab lookup must guard missing or invalid tab ids." >&2
   exit 1
 fi
 
@@ -263,6 +274,11 @@ if ! grep -Fq "redirects back only after the guarded unlist path runs" "$README"
   exit 1
 fi
 
+if ! grep -Fq "popup validates the active tab id before messaging" "$README"; then
+  printf '%s\n' "README must document popup current-tab validation." >&2
+  exit 1
+fi
+
 if ! grep -Fq "Status: Completed" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-tab-state-cleanup.md"; then
   printf '%s\n' "Chrome blocker tab state cleanup plan must record completed status." >&2
   exit 1
@@ -320,6 +336,16 @@ fi
 
 if ! grep -Fq "make check" "$BLOCKED_PAGE_REDIRECT_PLAN"; then
   printf '%s\n' "Chrome blocker blocked-page redirect guard plan must record make check verification." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$POPUP_TAB_PLAN"; then
+  printf '%s\n' "Chrome blocker popup tab guard plan must record completed status." >&2
+  exit 1
+fi
+
+if ! grep -Fq "make check" "$POPUP_TAB_PLAN"; then
+  printf '%s\n' "Chrome blocker popup tab guard plan must record make check verification." >&2
   exit 1
 fi
 
