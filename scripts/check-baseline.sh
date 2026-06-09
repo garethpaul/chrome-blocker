@@ -18,6 +18,11 @@ for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE"
   fi
 done
 
+if [ ! -f "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-tab-state-cleanup.md" ]; then
+  printf '%s\n' "Chrome blocker tab state cleanup plan is missing." >&2
+  exit 1
+fi
+
 if ! grep -Fq "Chrome Blocker Changes" "$ROOT_DIR/CHANGES.md"; then
   printf '%s\n' "CHANGES.md must identify the project." >&2
   exit 1
@@ -45,6 +50,26 @@ fi
 
 if ! grep -Fq "setTabBlockingState(request.tabId, tabBlockingState)" "$BACKGROUND"; then
   printf '%s\n' "Background state must use the webRequest tab id instead of selected tab state." >&2
+  exit 1
+fi
+
+if ! grep -Fq "function isValidTabId(tabid)" "$BACKGROUND"; then
+  printf '%s\n' "Background state must centralize valid tab id checks." >&2
+  exit 1
+fi
+
+if ! grep -Fq "if (isValidTabId(tabid))" "$BACKGROUND"; then
+  printf '%s\n' "Background state writes must ignore invalid tab ids." >&2
+  exit 1
+fi
+
+if ! grep -Fq "chrome.tabs.onRemoved.addListener(removeTabBlockingState)" "$BACKGROUND"; then
+  printf '%s\n' "Background state must be removed when tabs close." >&2
+  exit 1
+fi
+
+if ! grep -Fq "delete tabBlockingMap[tabid]" "$BACKGROUND"; then
+  printf '%s\n' "Background tab cleanup must delete closed tab state." >&2
   exit 1
 fi
 
@@ -126,6 +151,21 @@ fi
 
 if ! grep -Fq "blocked-page unblock countdown clears any prior interval" "$README"; then
   printf '%s\n' "README must document blocked-page countdown timer cleanup." >&2
+  exit 1
+fi
+
+if ! grep -Fq "tab blocking state is removed when tabs close" "$README"; then
+  printf '%s\n' "README must document tab blocking state cleanup." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-tab-state-cleanup.md"; then
+  printf '%s\n' "Chrome blocker tab state cleanup plan must record completed status." >&2
+  exit 1
+fi
+
+if ! grep -Fq "make check" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-tab-state-cleanup.md"; then
+  printf '%s\n' "Chrome blocker tab state cleanup plan must record make check verification." >&2
   exit 1
 fi
 

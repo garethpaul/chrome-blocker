@@ -80,6 +80,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 
 - The blocked-page unblock countdown clears any prior interval before starting
   a new timer and resets interval state when the modal closes.
+- Background tab blocking state is removed when tabs close and ignores invalid
+  non-tab navigation ids.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `CHANGES.md` for the maintenance history.

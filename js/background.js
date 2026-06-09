@@ -48,9 +48,19 @@ function findBlockedSite(requestUrl) {
   return 0;
 }
 
+function isValidTabId(tabid) {
+  return typeof tabid === "number" && tabid >= 0;
+}
+
 function setTabBlockingState(tabid, tabBlockingState) {
-  if (typeof tabid === "number" && tabid >= 0) {
+  if (isValidTabId(tabid)) {
     tabBlockingMap[tabid] = tabBlockingState;
+  }
+}
+
+function removeTabBlockingState(tabid) {
+  if (isValidTabId(tabid)) {
+    delete tabBlockingMap[tabid];
   }
 }
 
@@ -73,17 +83,17 @@ chrome.webRequest.onBeforeRequest.addListener(
   requestChecker, {urls: ["http://*/*", "https://*/*"]}, ["blocking"]);
 
 function updateMapping(details) {
-  if (details && typeof details.tabId !== "undefined" && !(details.tabId in tabBlockingMap)) {
+  if (details && isValidTabId(details.tabId) && !(details.tabId in tabBlockingMap)) {
     tabBlockingMap[details.tabId] = 0;
   }
 }
 
 function updateReplacedTabMapping(details) {
-  if (!details || typeof details.tabId === "undefined") {
+  if (!details || !isValidTabId(details.tabId)) {
     return;
   }
 
-  if (typeof details.replacedTabId !== "undefined") {
+  if (isValidTabId(details.replacedTabId)) {
     tabBlockingMap[details.tabId] = tabBlockingMap[details.replacedTabId] || 0;
     delete tabBlockingMap[details.replacedTabId];
   } else {
@@ -91,5 +101,6 @@ function updateReplacedTabMapping(details) {
   }
 }
 
+chrome.tabs.onRemoved.addListener(removeTabBlockingState);
 chrome.webNavigation.onTabReplaced.addListener(updateReplacedTabMapping);
 chrome.webNavigation.onCommitted.addListener(updateMapping);

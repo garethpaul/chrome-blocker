@@ -1,5 +1,11 @@
 # Chrome Blocker Changes
 
+## 2026-06-09
+
+- Added valid-tab-id guards around background blocking state and removed tab
+  state when Chrome reports a tab has closed.
+- Extended the source baseline and README notes to guard per-tab state cleanup.
+
 ## 2026-06-08
 
 - Added `make check` as the root wrapper for the extension source baseline and
