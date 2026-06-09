@@ -90,6 +90,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
   invalid tab ids cannot create stray per-tab entries.
 - The blocked page validates the current tab before unlisting a site or showing
   the unblock countdown.
+- The blocked page redirects back only after the guarded unlist path runs.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `CHANGES.md` for the maintenance history.
@@ -101,6 +102,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   for the background tab-state write baseline.
 - See `docs/plans/2026-06-09-chrome-blocker-blocked-page-tab-guard.md` for the
   blocked-page current-tab guard.
+- See `docs/plans/2026-06-09-chrome-blocker-blocked-page-redirect-guard.md` for
+  the blocked-page redirect guard.
 
 ## Contributing
 

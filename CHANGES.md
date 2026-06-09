@@ -4,6 +4,7 @@
 
 - Guarded blocked-page current-tab lookups before unlisting a site or showing
   the unblock countdown modal.
+- Moved the blocked-page return redirect into the guarded unlist path.
 - Routed background add and unblock tab-state writes through the centralized
   valid-tab-id helper.
 - Removed the popup's duplicate block-list storage write so background

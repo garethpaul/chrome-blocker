@@ -23,6 +23,7 @@ Priority:
 - Keep per-tab blocking state scoped to live browser tabs
 - Keep background tab-state writes behind the valid-tab-id helper
 - Keep blocked-page actions scoped to a valid current tab
+- Keep blocked-page redirects scoped to the guarded unlist path
 - Validate redirect message payloads before constructing extension URLs
 - Make host, tab, storage, webRequest, and navigation permissions explicit
 - Avoid adding tracking or remote configuration

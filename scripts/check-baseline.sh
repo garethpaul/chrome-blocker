@@ -11,8 +11,9 @@ URL_RULES="$ROOT_DIR/js/urlRules.js"
 README="$ROOT_DIR/README.md"
 PLAN="$ROOT_DIR/docs/plans/2026-06-08-chrome-blocker-url-baseline.md"
 BLOCKED_PAGE_TAB_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-blocked-page-tab-guard.md"
+BLOCKED_PAGE_REDIRECT_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-blocked-page-redirect-guard.md"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -171,6 +172,27 @@ if [ "$(grep -F "withCurrentTab(function(tab)" "$BLOCKED_SITE" | wc -l | tr -d '
   exit 1
 fi
 
+if [ "$(grep -F "window.location.href = site;" "$BLOCKED_SITE" | wc -l | tr -d ' ')" -ne 1 ]; then
+  printf '%s\n' "Blocked page redirect must stay in the guarded unlist path." >&2
+  exit 1
+fi
+
+if ! awk '
+  /withCurrentTab\(function\(tab\)/ { in_tab = 1; saw_unlist = 0; saw_redirect = 0 }
+  in_tab && /unlistSite\(tab.id, site\)/ { saw_unlist = 1 }
+  in_tab && /window.location.href = site;/ { saw_redirect = 1 }
+  in_tab && /\}\);/ {
+    if (saw_unlist && saw_redirect) {
+      found = 1
+    }
+    in_tab = 0
+  }
+  END { exit found ? 0 : 1 }
+' "$BLOCKED_SITE"; then
+  printf '%s\n' "Blocked page redirect must run inside the guarded current-tab unlist callback." >&2
+  exit 1
+fi
+
 if ! grep -Fq "decodeURIComponent(match[1])" "$URL_RULES"; then
   printf '%s\n' "URL rules must decode blocked redirect parameters." >&2
   exit 1
@@ -236,6 +258,11 @@ if ! grep -Fq "blocked page validates the current tab before unlisting" "$README
   exit 1
 fi
 
+if ! grep -Fq "redirects back only after the guarded unlist path runs" "$README"; then
+  printf '%s\n' "README must document guarded blocked-page redirect behavior." >&2
+  exit 1
+fi
+
 if ! grep -Fq "Status: Completed" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-tab-state-cleanup.md"; then
   printf '%s\n' "Chrome blocker tab state cleanup plan must record completed status." >&2
   exit 1
@@ -283,6 +310,16 @@ fi
 
 if ! grep -Fq "make check" "$BLOCKED_PAGE_TAB_PLAN"; then
   printf '%s\n' "Chrome blocker blocked-page tab guard plan must record make check verification." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$BLOCKED_PAGE_REDIRECT_PLAN"; then
+  printf '%s\n' "Chrome blocker blocked-page redirect guard plan must record completed status." >&2
+  exit 1
+fi
+
+if ! grep -Fq "make check" "$BLOCKED_PAGE_REDIRECT_PLAN"; then
+  printf '%s\n' "Chrome blocker blocked-page redirect guard plan must record make check verification." >&2
   exit 1
 fi
 
