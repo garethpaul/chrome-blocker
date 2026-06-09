@@ -59,7 +59,7 @@ scripts/check-baseline.sh
 node scripts/test-url-rules.js
 ```
 
-The URL-rule baseline verifies normalized HTTP(S) origin matching, rejected lookalike hosts, block-list deduplication, and encoded redirect parameters for `blockedSite.html`.
+The URL-rule baseline verifies normalized HTTP(S) origin matching, rejected lookalike hosts, block-list deduplication, encoded redirect parameters for `blockedSite.html`, and scoped manifest host permissions.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -93,6 +93,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - The blocked page redirects back only after the guarded unlist path runs.
 - The popup validates the active tab id before messaging content scripts or
   reading background tab state.
+- Host permissions are scoped to HTTP(S) pages to match the URL matcher and
+  content-script coverage.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `CHANGES.md` for the maintenance history.
@@ -108,6 +110,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   the blocked-page redirect guard.
 - See `docs/plans/2026-06-09-chrome-blocker-popup-tab-guard.md` for the popup
   current-tab guard.
+- See `docs/plans/2026-06-09-chrome-blocker-http-host-permissions.md` for the
+  scoped host-permission baseline.
 
 ## Contributing
 

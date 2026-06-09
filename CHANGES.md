@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Scoped extension host permissions to HTTP and HTTPS pages instead of the
+  all-schemes wildcard.
 - Guarded popup active-tab lookup before reading background tab state or
   messaging content scripts.
 - Guarded blocked-page current-tab lookups before unlisting a site or showing

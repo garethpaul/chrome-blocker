@@ -26,6 +26,7 @@ Priority:
 - Keep blocked-page redirects scoped to the guarded unlist path
 - Keep popup actions scoped to a valid active tab id
 - Validate redirect message payloads before constructing extension URLs
+- Keep host permissions scoped to the HTTP(S) pages the blocker can inspect
 - Make host, tab, storage, webRequest, and navigation permissions explicit
 - Avoid adding tracking or remote configuration
 

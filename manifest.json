@@ -37,7 +37,8 @@
   ],
 
   "permissions": [
-    "*://*/*",
+    "http://*/*",
+    "https://*/*",
     "tabs",
     "storage",
     "webRequest",

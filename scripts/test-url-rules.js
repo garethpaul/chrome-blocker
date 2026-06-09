@@ -1,4 +1,6 @@
 const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
 
 const {
   getBlockedOriginFromSearch,
@@ -6,6 +8,11 @@ const {
   normalizeBlockedOrigin,
   requestMatchesBlockedSite
 } = require("../js/urlRules");
+
+const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "manifest.json"), "utf8"));
+assert.ok(!manifest.permissions.includes("*://*/*"));
+assert.ok(manifest.permissions.includes("http://*/*"));
+assert.ok(manifest.permissions.includes("https://*/*"));
 
 assert.strictEqual(
   normalizeBlockedOrigin("https://Example.com/some/page?x=1"),
@@ -50,4 +57,4 @@ assert.strictEqual(
 );
 assert.strictEqual(getBlockedOriginFromSearch("?blocked=javascript%3Aalert(1)"), "");
 
-console.log("URL rule tests passed.");
+console.log("URL rule and manifest permission tests passed.");

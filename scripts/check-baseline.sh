@@ -13,8 +13,9 @@ PLAN="$ROOT_DIR/docs/plans/2026-06-08-chrome-blocker-url-baseline.md"
 BLOCKED_PAGE_TAB_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-blocked-page-tab-guard.md"
 BLOCKED_PAGE_REDIRECT_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-blocked-page-redirect-guard.md"
 POPUP_TAB_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-popup-tab-guard.md"
+HOST_PERMISSION_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-http-host-permissions.md"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -53,6 +54,22 @@ fi
 
 if ! grep -Fq '"http://*/*", "https://*/*"' "$BACKGROUND"; then
   printf '%s\n' "Background interception must be limited to HTTP(S) URLs." >&2
+  exit 1
+fi
+
+if grep -Fq '"*://*/*"' "$MANIFEST"; then
+  printf '%s\n' "Manifest host permissions must not use the all-schemes wildcard." >&2
+  exit 1
+fi
+
+if ! awk '
+  /"permissions": \[/ { in_permissions = 1 }
+  in_permissions && /"http:\/\/\*\/\*"/ { saw_http = 1 }
+  in_permissions && /"https:\/\/\*\/\*"/ { saw_https = 1 }
+  in_permissions && /\]/ { exit (saw_http && saw_https) ? 0 : 1 }
+  END { if (!in_permissions) exit 1 }
+' "$MANIFEST"; then
+  printf '%s\n' "Manifest host permissions must explicitly cover HTTP and HTTPS pages." >&2
   exit 1
 fi
 
@@ -279,6 +296,11 @@ if ! grep -Fq "popup validates the active tab id before messaging" "$README"; th
   exit 1
 fi
 
+if ! grep -Fq "Host permissions are scoped to HTTP(S) pages" "$README"; then
+  printf '%s\n' "README must document scoped host permissions." >&2
+  exit 1
+fi
+
 if ! grep -Fq "Status: Completed" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-tab-state-cleanup.md"; then
   printf '%s\n' "Chrome blocker tab state cleanup plan must record completed status." >&2
   exit 1
@@ -346,6 +368,16 @@ fi
 
 if ! grep -Fq "make check" "$POPUP_TAB_PLAN"; then
   printf '%s\n' "Chrome blocker popup tab guard plan must record make check verification." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$HOST_PERMISSION_PLAN"; then
+  printf '%s\n' "Chrome blocker host permission plan must record completed status." >&2
+  exit 1
+fi
+
+if ! grep -Fq "make check" "$HOST_PERMISSION_PLAN"; then
+  printf '%s\n' "Chrome blocker host permission plan must record make check verification." >&2
   exit 1
 fi
 
