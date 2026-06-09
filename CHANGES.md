@@ -2,6 +2,8 @@
 
 ## 2026-06-08
 
+- Added `make check` as the root wrapper for the extension source baseline and
+  URL-rule tests.
 - Reset the blocked-page unblock countdown interval before restarting it and
   after the modal closes.
 - Restored README verification notes for the URL-rule test and extension

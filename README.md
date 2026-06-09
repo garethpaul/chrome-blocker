@@ -54,6 +54,7 @@ Load the extension unpacked from this directory:
 Run the SDK-free source baseline and URL-rule tests:
 
 ```sh
+make check
 scripts/check-baseline.sh
 node scripts/test-url-rules.js
 ```
@@ -82,6 +83,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `CHANGES.md` for the maintenance history.
+- See `docs/plans/2026-06-08-chrome-blocker-check-wrapper.md` for the root
+  verification wrapper baseline.
 
 ## Contributing
 
