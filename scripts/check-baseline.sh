@@ -14,8 +14,9 @@ BLOCKED_PAGE_TAB_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-blocked-pa
 BLOCKED_PAGE_REDIRECT_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-blocked-page-redirect-guard.md"
 POPUP_TAB_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-popup-tab-guard.md"
 HOST_PERMISSION_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-http-host-permissions.md"
+CREDENTIAL_URL_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-credential-url-guard.md"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -226,6 +227,11 @@ if ! grep -Fq "decodeURIComponent(match[1])" "$URL_RULES"; then
   exit 1
 fi
 
+if ! grep -Fq 'parsedUrl.username !== "" || parsedUrl.password !== ""' "$URL_RULES"; then
+  printf '%s\n' "URL rules must reject credential-bearing block origins." >&2
+  exit 1
+fi
+
 if grep -R "console\\.log" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" >/dev/null 2>&1; then
   printf '%s\n' "Extension scripts must not log tab URLs or block-list state." >&2
   exit 1
@@ -298,6 +304,11 @@ fi
 
 if ! grep -Fq "Host permissions are scoped to HTTP(S) pages" "$README"; then
   printf '%s\n' "README must document scoped host permissions." >&2
+  exit 1
+fi
+
+if ! grep -Fq "URL normalization rejects credential-bearing blocker URLs" "$README"; then
+  printf '%s\n' "README must document credential-bearing URL rejection." >&2
   exit 1
 fi
 
@@ -378,6 +389,16 @@ fi
 
 if ! grep -Fq "make check" "$HOST_PERMISSION_PLAN"; then
   printf '%s\n' "Chrome blocker host permission plan must record make check verification." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$CREDENTIAL_URL_PLAN"; then
+  printf '%s\n' "Chrome blocker credential URL guard plan must record completed status." >&2
+  exit 1
+fi
+
+if ! grep -Fq "make check" "$CREDENTIAL_URL_PLAN"; then
+  printf '%s\n' "Chrome blocker credential URL guard plan must record make check verification." >&2
   exit 1
 fi
 

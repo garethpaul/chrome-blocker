@@ -21,12 +21,15 @@ assert.strictEqual(
 assert.strictEqual(normalizeBlockedOrigin("http://example.com:8080/a"), "http://example.com:8080");
 assert.strictEqual(normalizeBlockedOrigin("javascript:alert(1)"), "");
 assert.strictEqual(normalizeBlockedOrigin("file:///tmp/index.html"), "");
+assert.strictEqual(normalizeBlockedOrigin("https://user:pass@example.com/path"), "");
+assert.strictEqual(normalizeBlockedOrigin("https://user@example.com/path"), "");
 assert.strictEqual(normalizeBlockedOrigin("not a url"), "");
 
 assert.deepStrictEqual(
   normalizeBlockedList([
     "https://Example.com/path",
     "https://example.com/other",
+    "https://user:pass@example.com/private",
     "javascript:alert(1)",
     "",
     "http://example.com/"
@@ -50,11 +53,19 @@ assert.strictEqual(
   requestMatchesBlockedSite("http://example.com/", "https://example.com/"),
   false
 );
+assert.strictEqual(
+  requestMatchesBlockedSite("https://user:pass@example.com/", "https://example.com/"),
+  false
+);
 
 assert.strictEqual(
   getBlockedOriginFromSearch("?blocked=" + encodeURIComponent("https://Example.com/path")),
   "https://example.com"
 );
 assert.strictEqual(getBlockedOriginFromSearch("?blocked=javascript%3Aalert(1)"), "");
+assert.strictEqual(
+  getBlockedOriginFromSearch("?blocked=" + encodeURIComponent("https://user:pass@example.com/path")),
+  ""
+);
 
 console.log("URL rule and manifest permission tests passed.");

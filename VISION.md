@@ -27,6 +27,7 @@ Priority:
 - Keep popup actions scoped to a valid active tab id
 - Validate redirect message payloads before constructing extension URLs
 - Keep host permissions scoped to the HTTP(S) pages the blocker can inspect
+- Reject credential-bearing blocker URLs before storing or matching rules
 - Make host, tab, storage, webRequest, and navigation permissions explicit
 - Avoid adding tracking or remote configuration
 

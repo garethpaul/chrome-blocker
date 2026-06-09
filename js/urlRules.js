@@ -14,6 +14,9 @@
       if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
         return "";
       }
+      if (parsedUrl.username !== "" || parsedUrl.password !== "") {
+        return "";
+      }
 
       return parsedUrl.origin.toLowerCase();
     } catch (error) {

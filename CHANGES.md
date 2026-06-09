@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Rejected credential-bearing blocker URLs during shared URL normalization so
+  pasted user-info URLs are not stored or matched as bare origins.
 - Scoped extension host permissions to HTTP and HTTPS pages instead of the
   all-schemes wildcard.
 - Guarded popup active-tab lookup before reading background tab state or

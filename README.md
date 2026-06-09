@@ -59,7 +59,10 @@ scripts/check-baseline.sh
 node scripts/test-url-rules.js
 ```
 
-The URL-rule baseline verifies normalized HTTP(S) origin matching, rejected lookalike hosts, block-list deduplication, encoded redirect parameters for `blockedSite.html`, and scoped manifest host permissions.
+The URL-rule baseline verifies normalized HTTP(S) origin matching, rejected
+lookalike hosts, rejected credential-bearing blocker URLs, block-list
+deduplication, encoded redirect parameters for `blockedSite.html`, and scoped
+manifest host permissions.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -95,6 +98,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   reading background tab state.
 - Host permissions are scoped to HTTP(S) pages to match the URL matcher and
   content-script coverage.
+- URL normalization rejects credential-bearing blocker URLs before storing,
+  matching, or decoding redirected block origins.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `CHANGES.md` for the maintenance history.
@@ -112,6 +117,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   current-tab guard.
 - See `docs/plans/2026-06-09-chrome-blocker-http-host-permissions.md` for the
   scoped host-permission baseline.
+- See `docs/plans/2026-06-09-chrome-blocker-credential-url-guard.md` for the
+  credential-bearing blocker URL guard.
 
 ## Contributing
 
