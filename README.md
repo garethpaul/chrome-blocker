@@ -84,6 +84,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   non-tab navigation ids.
 - The content-script redirect messages are normalized before constructing
   `blockedSite.html` URLs.
+- The background page owns block-list storage writes; the popup delegates new
+  blocked origins instead of writing the same list twice.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `CHANGES.md` for the maintenance history.

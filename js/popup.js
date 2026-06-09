@@ -34,11 +34,7 @@ function blacklistSite() {
         }
 
         if (blockedSites.indexOf(urlToBlock) === -1) {
-          blockedSites.push(urlToBlock);
-
           chrome.extension.getBackgroundPage().addBlockedSite(tab.id, urlToBlock);
-
-          chrome.storage.local.set({blocked: blockedSites});
         }
         chrome.tabs.sendMessage(tab.id, {action: "redirect", blockedSite: urlToBlock});
       });

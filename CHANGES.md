@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Removed the popup's duplicate block-list storage write so background
+  `addBlockedSite` remains the single persistence owner.
 - Normalized content-script redirect message payloads before constructing
   `blockedSite.html` URLs.
 - Added valid-tab-id guards around background blocking state and removed tab

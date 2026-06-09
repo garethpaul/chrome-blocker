@@ -23,6 +23,11 @@ if [ ! -f "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-tab-state-cleanup.md" 
   exit 1
 fi
 
+if [ ! -f "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-background-storage-owner.md" ]; then
+  printf '%s\n' "Chrome blocker background storage owner plan is missing." >&2
+  exit 1
+fi
+
 if ! grep -Fq "Chrome Blocker Changes" "$ROOT_DIR/CHANGES.md"; then
   printf '%s\n' "CHANGES.md must identify the project." >&2
   exit 1
@@ -85,6 +90,16 @@ fi
 
 if ! grep -Fq "normalizeBlockedOrigin(response.URL)" "$POPUP"; then
   printf '%s\n' "Popup must normalize the active tab URL before storing a block rule." >&2
+  exit 1
+fi
+
+if ! grep -Fq "chrome.extension.getBackgroundPage().addBlockedSite(tab.id, urlToBlock)" "$POPUP"; then
+  printf '%s\n' "Popup must delegate block-list persistence to the background page." >&2
+  exit 1
+fi
+
+if grep -Fq "chrome.storage.local.set({blocked: blockedSites})" "$POPUP"; then
+  printf '%s\n' "Popup must not duplicate background block-list storage writes." >&2
   exit 1
 fi
 
@@ -179,6 +194,11 @@ if ! grep -Fq "content-script redirect messages are normalized" "$README"; then
   exit 1
 fi
 
+if ! grep -Fq "background page owns block-list storage writes" "$README"; then
+  printf '%s\n' "README must document background-owned block-list persistence." >&2
+  exit 1
+fi
+
 if ! grep -Fq "Status: Completed" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-tab-state-cleanup.md"; then
   printf '%s\n' "Chrome blocker tab state cleanup plan must record completed status." >&2
   exit 1
@@ -196,6 +216,16 @@ fi
 
 if ! grep -Fq "make check" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-content-redirect-validation.md"; then
   printf '%s\n' "Chrome blocker content redirect validation plan must record make check verification." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-background-storage-owner.md"; then
+  printf '%s\n' "Chrome blocker background storage owner plan must record completed status." >&2
+  exit 1
+fi
+
+if ! grep -Fq "make check" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-background-storage-owner.md"; then
+  printf '%s\n' "Chrome blocker background storage owner plan must record make check verification." >&2
   exit 1
 fi
 
