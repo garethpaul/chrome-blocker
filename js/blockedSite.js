@@ -29,8 +29,8 @@ function updateCountdown() {
     clearInterval(interval);
     withCurrentTab(function(tab) {
       chrome.extension.getBackgroundPage().unlistSite(tab.id, site);
+      window.location.href = site;
     });
-    window.location.href = site;
   }
 }
 
