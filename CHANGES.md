@@ -2,6 +2,8 @@
 
 ## 2026-06-08
 
+- Reset the blocked-page unblock countdown interval before restarting it and
+  after the modal closes.
 - Restored README verification notes for the URL-rule test and extension
   source baseline after the generated project overview refresh.
 - Added exact-origin URL rule utilities and Node coverage for normalization,

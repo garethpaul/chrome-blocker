@@ -24,14 +24,22 @@ function updateCountdown() {
   }
 }
 
+function clearCountdownTimer() {
+  if (interval) {
+    clearInterval(interval);
+    interval = 0;
+  }
+}
+
 function beginCountdown() {
+  clearCountdownTimer();
   i = 15;
   content.text("Unlisting " + site + " in " + i + " seconds...");
   interval = setInterval(function() {updateCountdown(i)}, 1000);
 }
 
 function modalHidden() {
-  clearInterval(interval);
+  clearCountdownTimer();
 }
 
 function hideModal() {

@@ -73,6 +73,22 @@ if ! grep -Fq "getBlockedOriginFromSearch(window.location.search)" "$BLOCKED_SIT
   exit 1
 fi
 
+if ! grep -Fq "clearCountdownTimer" "$BLOCKED_SITE"; then
+  printf '%s\n' "Blocked page must centralize countdown interval cleanup." >&2
+  exit 1
+fi
+
+countdown_cleanup_calls=$(grep -F "clearCountdownTimer();" "$BLOCKED_SITE" | wc -l | tr -d ' ')
+if [ "$countdown_cleanup_calls" -lt 2 ]; then
+  printf '%s\n' "Blocked page must clear countdown timers before restart and after modal close." >&2
+  exit 1
+fi
+
+if ! grep -Fq "interval = 0;" "$BLOCKED_SITE"; then
+  printf '%s\n' "Blocked page countdown cleanup must reset interval state." >&2
+  exit 1
+fi
+
 if ! grep -Fq "decodeURIComponent(match[1])" "$URL_RULES"; then
   printf '%s\n' "URL rules must decode blocked redirect parameters." >&2
   exit 1
@@ -105,6 +121,11 @@ fi
 
 if ! grep -Fq "CHANGES.md" "$README"; then
   printf '%s\n' "README must point to CHANGES.md." >&2
+  exit 1
+fi
+
+if ! grep -Fq "blocked-page unblock countdown clears any prior interval" "$README"; then
+  printf '%s\n' "README must document blocked-page countdown timer cleanup." >&2
   exit 1
 fi
 
