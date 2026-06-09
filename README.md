@@ -88,6 +88,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   blocked origins instead of writing the same list twice.
 - The background add and unblock paths use centralized tab state writes so
   invalid tab ids cannot create stray per-tab entries.
+- The blocked page validates the current tab before unlisting a site or showing
+  the unblock countdown.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `CHANGES.md` for the maintenance history.
@@ -97,6 +99,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   for the content-script redirect validation baseline.
 - See `docs/plans/2026-06-09-chrome-blocker-background-tab-state-writes.md`
   for the background tab-state write baseline.
+- See `docs/plans/2026-06-09-chrome-blocker-blocked-page-tab-guard.md` for the
+  blocked-page current-tab guard.
 
 ## Contributing
 

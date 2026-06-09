@@ -9,6 +9,16 @@ var content = $("#countdown");
 var i = 15;
 var interval = 0;
 
+function withCurrentTab(callback) {
+  chrome.tabs.getCurrent(function(tab) {
+    if (!tab || typeof tab.id !== "number") {
+      return;
+    }
+
+    callback(tab);
+  });
+}
+
 function updateCountdown() {
   if (site === "") {
     return;
@@ -17,7 +27,7 @@ function updateCountdown() {
   content.text("Unlisting " + site + " in " + --i + " seconds...");
   if (i == 0) {
     clearInterval(interval);
-    chrome.tabs.getCurrent(function(tab) {
+    withCurrentTab(function(tab) {
       chrome.extension.getBackgroundPage().unlistSite(tab.id, site);
     });
     window.location.href = site;
@@ -51,7 +61,7 @@ $("#cancelUnlist").click(hideModal);
 
 chrome.runtime.onMessage.addListener(
     function(message, sender, sendResponse) {
-  chrome.tabs.getCurrent(function(tab) {
+  withCurrentTab(function(tab) {
     if (site !== "" && tab.id == message) {
       $("#unlistModal").modal("show");
       beginCountdown();

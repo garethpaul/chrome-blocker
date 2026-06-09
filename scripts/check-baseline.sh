@@ -10,8 +10,9 @@ BLOCKED_SITE="$ROOT_DIR/js/blockedSite.js"
 URL_RULES="$ROOT_DIR/js/urlRules.js"
 README="$ROOT_DIR/README.md"
 PLAN="$ROOT_DIR/docs/plans/2026-06-08-chrome-blocker-url-baseline.md"
+BLOCKED_PAGE_TAB_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-blocked-page-tab-guard.md"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -155,6 +156,21 @@ if ! grep -Fq "interval = 0;" "$BLOCKED_SITE"; then
   exit 1
 fi
 
+if ! grep -Fq "function withCurrentTab(callback)" "$BLOCKED_SITE"; then
+  printf '%s\n' "Blocked page must centralize current-tab lookup." >&2
+  exit 1
+fi
+
+if ! grep -Fq 'if (!tab || typeof tab.id !== "number")' "$BLOCKED_SITE"; then
+  printf '%s\n' "Blocked page current-tab lookup must guard missing or invalid tab ids." >&2
+  exit 1
+fi
+
+if [ "$(grep -F "withCurrentTab(function(tab)" "$BLOCKED_SITE" | wc -l | tr -d ' ')" -lt 2 ]; then
+  printf '%s\n' "Blocked page unlist and message paths must use guarded current-tab lookup." >&2
+  exit 1
+fi
+
 if ! grep -Fq "decodeURIComponent(match[1])" "$URL_RULES"; then
   printf '%s\n' "URL rules must decode blocked redirect parameters." >&2
   exit 1
@@ -215,6 +231,11 @@ if ! grep -Fq "background add and unblock paths use centralized tab state writes
   exit 1
 fi
 
+if ! grep -Fq "blocked page validates the current tab before unlisting" "$README"; then
+  printf '%s\n' "README must document blocked-page current-tab validation." >&2
+  exit 1
+fi
+
 if ! grep -Fq "Status: Completed" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-tab-state-cleanup.md"; then
   printf '%s\n' "Chrome blocker tab state cleanup plan must record completed status." >&2
   exit 1
@@ -252,6 +273,16 @@ fi
 
 if ! grep -Fq "make check" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-background-tab-state-writes.md"; then
   printf '%s\n' "Chrome blocker background tab state write plan must record make check verification." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$BLOCKED_PAGE_TAB_PLAN"; then
+  printf '%s\n' "Chrome blocker blocked-page tab guard plan must record completed status." >&2
+  exit 1
+fi
+
+if ! grep -Fq "make check" "$BLOCKED_PAGE_TAB_PLAN"; then
+  printf '%s\n' "Chrome blocker blocked-page tab guard plan must record make check verification." >&2
   exit 1
 fi
 
