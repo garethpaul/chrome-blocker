@@ -33,6 +33,11 @@ if ! grep -Fq '"scripts": ["js/urlRules.js", "js/background.js"]' "$MANIFEST"; t
   exit 1
 fi
 
+if ! grep -Fq '"js/urlRules.js",' "$MANIFEST" || ! grep -Fq '"js/contentScript.js"' "$MANIFEST"; then
+  printf '%s\n' "Manifest must load URL rules before the content script." >&2
+  exit 1
+fi
+
 if ! grep -Fq '"http://*/*", "https://*/*"' "$BACKGROUND"; then
   printf '%s\n' "Background interception must be limited to HTTP(S) URLs." >&2
   exit 1
@@ -88,8 +93,18 @@ if grep -Fq "/.*" "$POPUP"; then
   exit 1
 fi
 
-if ! grep -Fq "encodeURIComponent(request.blockedSite)" "$CONTENT_SCRIPT"; then
-  printf '%s\n' "Content redirects must encode the blocked origin query parameter." >&2
+if ! grep -Fq "var blockedSite = normalizeBlockedOrigin(request.blockedSite)" "$CONTENT_SCRIPT"; then
+  printf '%s\n' "Content redirects must normalize message-provided blocked origins." >&2
+  exit 1
+fi
+
+if ! grep -Fq 'if (blockedSite === "")' "$CONTENT_SCRIPT"; then
+  printf '%s\n' "Content redirects must ignore invalid blocked origins." >&2
+  exit 1
+fi
+
+if ! grep -Fq "encodeURIComponent(blockedSite)" "$CONTENT_SCRIPT"; then
+  printf '%s\n' "Content redirects must encode the normalized blocked origin query parameter." >&2
   exit 1
 fi
 
@@ -159,6 +174,11 @@ if ! grep -Fq "tab blocking state is removed when tabs close" "$README"; then
   exit 1
 fi
 
+if ! grep -Fq "content-script redirect messages are normalized" "$README"; then
+  printf '%s\n' "README must document content-script redirect message validation." >&2
+  exit 1
+fi
+
 if ! grep -Fq "Status: Completed" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-tab-state-cleanup.md"; then
   printf '%s\n' "Chrome blocker tab state cleanup plan must record completed status." >&2
   exit 1
@@ -166,6 +186,16 @@ fi
 
 if ! grep -Fq "make check" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-tab-state-cleanup.md"; then
   printf '%s\n' "Chrome blocker tab state cleanup plan must record make check verification." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-content-redirect-validation.md"; then
+  printf '%s\n' "Chrome blocker content redirect validation plan must record completed status." >&2
+  exit 1
+fi
+
+if ! grep -Fq "make check" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-content-redirect-validation.md"; then
+  printf '%s\n' "Chrome blocker content redirect validation plan must record make check verification." >&2
   exit 1
 fi
 

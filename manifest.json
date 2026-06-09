@@ -25,6 +25,7 @@
         "https://*/*"
       ],
       "js": [
+        "js/urlRules.js",
         "js/contentScript.js"
       ],
       "run_at": "document_start"

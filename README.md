@@ -82,11 +82,15 @@ When the required SDK or runtime is unavailable, use static checks and source re
   a new timer and resets interval state when the modal closes.
 - Background tab blocking state is removed when tabs close and ignores invalid
   non-tab navigation ids.
+- The content-script redirect messages are normalized before constructing
+  `blockedSite.html` URLs.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `CHANGES.md` for the maintenance history.
 - See `docs/plans/2026-06-08-chrome-blocker-check-wrapper.md` for the root
   verification wrapper baseline.
+- See `docs/plans/2026-06-09-chrome-blocker-content-redirect-validation.md`
+  for the content-script redirect validation baseline.
 
 ## Contributing
 

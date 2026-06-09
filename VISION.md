@@ -20,6 +20,7 @@ Priority:
 - Preserve the popup-to-background flow for adding and removing blocked sites
 - Keep the block list local to the browser
 - Keep per-tab blocking state scoped to live browser tabs
+- Validate redirect message payloads before constructing extension URLs
 - Make host, tab, storage, webRequest, and navigation permissions explicit
 - Avoid adding tracking or remote configuration
 

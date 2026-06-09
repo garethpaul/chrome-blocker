@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Normalized content-script redirect message payloads before constructing
+  `blockedSite.html` URLs.
 - Added valid-tab-id guards around background blocking state and removed tab
   state when Chrome reports a tab has closed.
 - Extended the source baseline and README notes to guard per-tab state cleanup.
