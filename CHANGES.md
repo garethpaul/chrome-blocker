@@ -1,5 +1,14 @@
 # Chrome Blocker Changes
 
+## 2026-06-10
+
+- Added a GitHub Actions workflow that runs `make check` on Node 20, 22, and
+  24.
+- Pinned workflow actions and limited repository access to read-only with
+  bounded execution.
+- Extended the baseline script and docs to require the hosted CI verification
+  path.
+
 ## 2026-06-09
 
 - Rejected credential-bearing blocker URLs during shared URL normalization so

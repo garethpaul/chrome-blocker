@@ -63,6 +63,9 @@ The URL-rule baseline verifies normalized HTTP(S) origin matching, rejected
 lookalike hosts, rejected credential-bearing blocker URLs, block-list
 deduplication, encoded redirect parameters for `blockedSite.html`, and scoped
 manifest host permissions.
+GitHub Actions runs `make check` on Node 20, 22, and 24 for pushes, pull
+requests, and manual dispatches. The workflow uses commit-pinned actions,
+read-only repository access, and a bounded runtime.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -119,6 +122,11 @@ When the required SDK or runtime is unavailable, use static checks and source re
   scoped host-permission baseline.
 - See `docs/plans/2026-06-09-chrome-blocker-credential-url-guard.md` for the
   credential-bearing blocker URL guard.
+- See `docs/plans/2026-06-10-ci-baseline.md` for the hosted GitHub Actions
+  baseline.
+- A Manifest V3 migration remains separate work because it requires replacing
+  blocking `webRequest` behavior and persistent background-page calls, not just
+  changing the manifest version.
 
 ## Contributing
 

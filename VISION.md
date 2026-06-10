@@ -29,6 +29,7 @@ Priority:
 - Keep host permissions scoped to the HTTP(S) pages the blocker can inspect
 - Reject credential-bearing blocker URLs before storing or matching rules
 - Make host, tab, storage, webRequest, and navigation permissions explicit
+- Keep GitHub Actions aligned with the local Node `make check` baseline
 - Avoid adding tracking or remote configuration
 
 Next priorities:
@@ -44,6 +45,8 @@ Contribution rules:
 - Explain any new browser permission in the README.
 - Keep the extension usable for personal local installation.
 - Verify block and unblock behavior across normal and incognito contexts.
+- Keep `.github/workflows/check.yml` in sync with the local static and URL-rule
+  baseline.
 
 ## Security And Privacy
 

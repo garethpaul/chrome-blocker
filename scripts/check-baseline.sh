@@ -15,8 +15,10 @@ BLOCKED_PAGE_REDIRECT_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-block
 POPUP_TAB_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-popup-tab-guard.md"
 HOST_PERMISSION_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-http-host-permissions.md"
 CREDENTIAL_URL_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-credential-url-guard.md"
+CI_PLAN="$ROOT_DIR/docs/plans/2026-06-10-ci-baseline.md"
+CI_WORKFLOW="$ROOT_DIR/.github/workflows/check.yml"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -40,6 +42,24 @@ fi
 
 if ! grep -Fq "Chrome Blocker Changes" "$ROOT_DIR/CHANGES.md"; then
   printf '%s\n' "CHANGES.md must identify the project." >&2
+  exit 1
+fi
+
+if ! grep -Fq "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10" "$CI_WORKFLOW" ||
+  ! grep -Fq "actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e" "$CI_WORKFLOW" ||
+  ! grep -Fq "node-version: [20, 22, 24]" "$CI_WORKFLOW" ||
+  ! grep -Fq "run: make check" "$CI_WORKFLOW"; then
+  printf '%s\n' "GitHub Actions workflow must pin actions and run make check across supported Node releases." >&2
+  exit 1
+fi
+
+if ! grep -Fq "permissions:" "$CI_WORKFLOW" || ! grep -Fq "contents: read" "$CI_WORKFLOW"; then
+  printf '%s\n' "GitHub Actions workflow must keep repository access read-only." >&2
+  exit 1
+fi
+
+if ! grep -Fq "workflow_dispatch:" "$CI_WORKFLOW" || ! grep -Fq "timeout-minutes: 5" "$CI_WORKFLOW"; then
+  printf '%s\n' "GitHub Actions workflow must support bounded manual verification." >&2
   exit 1
 fi
 
@@ -312,6 +332,15 @@ if ! grep -Fq "URL normalization rejects credential-bearing blocker URLs" "$READ
   exit 1
 fi
 
+if ! grep -Fq "GitHub Actions" "$README" ||
+  ! grep -Fq "docs/plans/2026-06-10-ci-baseline.md" "$README" ||
+  ! grep -Fq "GitHub Actions" "$ROOT_DIR/VISION.md" ||
+  ! grep -Fq "GitHub Actions" "$ROOT_DIR/SECURITY.md" ||
+  ! grep -Fq "GitHub Actions" "$ROOT_DIR/CHANGES.md"; then
+  printf '%s\n' "Project docs must record the GitHub Actions CI baseline." >&2
+  exit 1
+fi
+
 if ! grep -Fq "Status: Completed" "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-tab-state-cleanup.md"; then
   printf '%s\n' "Chrome blocker tab state cleanup plan must record completed status." >&2
   exit 1
@@ -399,6 +428,12 @@ fi
 
 if ! grep -Fq "make check" "$CREDENTIAL_URL_PLAN"; then
   printf '%s\n' "Chrome blocker credential URL guard plan must record make check verification." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$CI_PLAN" ||
+  ! grep -Fq "make check" "$CI_PLAN"; then
+  printf '%s\n' "Chrome blocker CI baseline plan must record completed status and make check verification." >&2
   exit 1
 fi
 

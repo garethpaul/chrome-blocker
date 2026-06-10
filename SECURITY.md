@@ -33,6 +33,10 @@ Helpful reports include:
 - Review found shell execution, subprocess, or dynamic evaluation surfaces; changes in those areas should receive security-focused review before merge.
 - Review found database, model, query, or persistence-related code; changes in those areas should receive security-focused review before merge.
 - No primary dependency manifest was detected in the repository root. If dependencies are added later, include a manifest and prefer reproducible installation instructions.
+- GitHub Actions runs `make check` on Node 20, 22, and 24 with commit-pinned
+  actions, read-only repository access, and bounded execution so URL-rule,
+  tab-state, host-permission, and redirect guardrails stay enforced before
+  merge.
 
 ## Service and API Notes
 
