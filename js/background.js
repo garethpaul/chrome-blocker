@@ -65,7 +65,8 @@ function removeTabBlockingState(tabid) {
 }
 
 function requestChecker(request) {
-  if (!request || request.type !== "main_frame" || !request.url) {
+  if (!request || request.type !== "main_frame" || !request.url ||
+      !isValidTabId(request.tabId)) {
     return;
   }
 

@@ -1,12 +1,14 @@
 .PHONY: build check lint test verify
 
 NODE ?= node
+ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 lint:
-	scripts/check-baseline.sh
+	$(ROOT)scripts/check-baseline.sh
 
 test:
-	$(NODE) scripts/test-url-rules.js
+	$(NODE) $(ROOT)scripts/test-url-rules.js
+	$(NODE) $(ROOT)scripts/test-background.js
 
 build: lint
 

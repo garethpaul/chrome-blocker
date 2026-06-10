@@ -22,6 +22,7 @@ Priority:
 - Keep block-list persistence owned by background extension state
 - Keep per-tab blocking state scoped to live browser tabs
 - Keep background tab-state writes behind the valid-tab-id helper
+- Keep request interception scoped to main-frame navigations with valid tab ids
 - Keep blocked-page actions scoped to a valid current tab
 - Keep blocked-page redirects scoped to the guarded unlist path
 - Keep popup actions scoped to a valid active tab id

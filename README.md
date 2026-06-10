@@ -57,12 +57,16 @@ Run the SDK-free source baseline and URL-rule tests:
 make check
 scripts/check-baseline.sh
 node scripts/test-url-rules.js
+node scripts/test-background.js
 ```
 
 The URL-rule baseline verifies normalized HTTP(S) origin matching, rejected
 lookalike hosts, rejected credential-bearing blocker URLs, block-list
 deduplication, encoded redirect parameters for `blockedSite.html`, and scoped
 manifest host permissions.
+The background behavior test executes the real request listener with mocked
+Chrome APIs and covers invalid tab ids, subframes, valid redirects, and tab
+state updates.
 GitHub Actions runs `make check` on Node 20, 22, and 24 for pushes, pull
 requests, and manual dispatches. The workflow uses commit-pinned actions,
 read-only repository access, and a bounded runtime.
@@ -88,6 +92,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   a new timer and resets interval state when the modal closes.
 - Background tab blocking state is removed when tabs close and ignores invalid
   non-tab navigation ids.
+- Non-tab main-frame requests are ignored before URL matching or redirect
+  construction, keeping blocking behavior scoped to real browser tabs.
 - The content-script redirect messages are normalized before constructing
   `blockedSite.html` URLs.
 - The background page owns block-list storage writes; the popup delegates new
@@ -124,6 +130,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   credential-bearing blocker URL guard.
 - See `docs/plans/2026-06-10-ci-baseline.md` for the hosted GitHub Actions
   baseline.
+- See `docs/plans/2026-06-10-chrome-blocker-non-tab-request-guard.md` for the
+  background interception boundary and executable listener test.
 - A Manifest V3 migration remains separate work because it requires replacing
   blocking `webRequest` behavior and persistent background-page calls, not just
   changing the manifest version.

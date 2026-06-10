@@ -2,6 +2,10 @@
 
 ## 2026-06-10
 
+- Ignored main-frame web requests without a valid browser tab before matching
+  or redirecting, and added a Node VM test over the real background listener.
+- Made local checks location-independent and pinned CI to the stable Ubuntu
+  24.04 runner image.
 - Added a GitHub Actions workflow that runs `make check` on Node 20, 22, and
   24.
 - Pinned workflow actions and limited repository access to read-only with

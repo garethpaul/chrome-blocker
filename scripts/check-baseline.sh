@@ -17,8 +17,10 @@ HOST_PERMISSION_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-http-host-p
 CREDENTIAL_URL_PLAN="$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-credential-url-guard.md"
 CI_PLAN="$ROOT_DIR/docs/plans/2026-06-10-ci-baseline.md"
 CI_WORKFLOW="$ROOT_DIR/.github/workflows/check.yml"
+NON_TAB_REQUEST_PLAN="$ROOT_DIR/docs/plans/2026-06-10-chrome-blocker-non-tab-request-guard.md"
+BACKGROUND_TEST="$ROOT_DIR/scripts/test-background.js"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -60,6 +62,11 @@ fi
 
 if ! grep -Fq "workflow_dispatch:" "$CI_WORKFLOW" || ! grep -Fq "timeout-minutes: 5" "$CI_WORKFLOW"; then
   printf '%s\n' "GitHub Actions workflow must support bounded manual verification." >&2
+  exit 1
+fi
+
+if ! grep -Fq "runs-on: ubuntu-24.04" "$CI_WORKFLOW" || ! grep -Fq "cancel-in-progress: true" "$CI_WORKFLOW"; then
+  printf '%s\n' "GitHub Actions must use a stable runner and cancel superseded checks." >&2
   exit 1
 fi
 
@@ -111,6 +118,11 @@ fi
 
 if ! grep -Fq "function isValidTabId(tabid)" "$BACKGROUND"; then
   printf '%s\n' "Background state must centralize valid tab id checks." >&2
+  exit 1
+fi
+
+if ! grep -Fq '!isValidTabId(request.tabId)' "$BACKGROUND"; then
+  printf '%s\n' "Background interception must ignore requests that are not associated with a browser tab." >&2
   exit 1
 fi
 
@@ -264,6 +276,32 @@ fi
 
 if ! grep -Fq "scripts/check-baseline.sh" "$README"; then
   printf '%s\n' "README must document the source baseline check." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Non-tab main-frame requests are ignored" "$README"; then
+  printf '%s\n' "README must document the non-tab request interception guard." >&2
+  exit 1
+fi
+
+if ! grep -Fq 'tabId: -1' "$BACKGROUND_TEST" || \
+   ! grep -Fq 'type: "main_frame"' "$BACKGROUND_TEST" || \
+   ! grep -Fq 'Background request boundary tests passed.' "$BACKGROUND_TEST"; then
+  printf '%s\n' "Background tests must execute the invalid-tab and valid main-frame request boundary." >&2
+  exit 1
+fi
+
+if [ "$(grep -Fc 'tabId: -1' "$BACKGROUND_TEST")" -ne 1 ] || \
+   [ "$(grep -Fc 'type: "main_frame"' "$BACKGROUND_TEST")" -ne 2 ] || \
+   [ "$(grep -Fc 'type: "sub_frame"' "$BACKGROUND_TEST")" -ne 1 ]; then
+  printf '%s\n' "Background tests must preserve invalid-tab, subframe, and valid main-frame fixtures." >&2
+  exit 1
+fi
+
+if [ ! -f "$ROOT_DIR/Makefile" ] || \
+   ! grep -Fq 'ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))' "$ROOT_DIR/Makefile" || \
+   ! grep -Fq '$(ROOT)scripts/test-background.js' "$ROOT_DIR/Makefile"; then
+  printf '%s\n' "Makefile must run rooted source and background behavior checks." >&2
   exit 1
 fi
 
@@ -434,6 +472,12 @@ fi
 if ! grep -Fq "Status: Completed" "$CI_PLAN" ||
   ! grep -Fq "make check" "$CI_PLAN"; then
   printf '%s\n' "Chrome blocker CI baseline plan must record completed status and make check verification." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$NON_TAB_REQUEST_PLAN" || \
+   ! grep -Fq "make check" "$NON_TAB_REQUEST_PLAN"; then
+  printf '%s\n' "Chrome blocker non-tab request plan must record completed status and make check verification." >&2
   exit 1
 fi
 
