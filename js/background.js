@@ -85,7 +85,7 @@ chrome.webRequest.onBeforeRequest.addListener(
 
 function updateMapping(details) {
   if (details && isValidTabId(details.tabId) && !(details.tabId in tabBlockingMap)) {
-    tabBlockingMap[details.tabId] = 0;
+    setTabBlockingState(details.tabId, 0);
   }
 }
 
@@ -95,8 +95,8 @@ function updateReplacedTabMapping(details) {
   }
 
   if (isValidTabId(details.replacedTabId)) {
-    tabBlockingMap[details.tabId] = tabBlockingMap[details.replacedTabId] || 0;
-    delete tabBlockingMap[details.replacedTabId];
+    setTabBlockingState(details.tabId, getTabState(details.replacedTabId));
+    removeTabBlockingState(details.replacedTabId);
   } else {
     updateMapping(details);
   }

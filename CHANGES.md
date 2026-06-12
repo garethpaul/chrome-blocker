@@ -1,5 +1,12 @@
 # Chrome Blocker Changes
 
+## 2026-06-12
+
+- Routed committed-navigation and tab-replacement state changes through the
+  centralized valid-tab helpers.
+- Expanded the real background-script VM test to cover state initialization,
+  replacement transfer, invalid replacement details, and tab removal.
+
 ## 2026-06-10
 
 - Ignored main-frame web requests without a valid browser tab before matching

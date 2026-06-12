@@ -19,8 +19,9 @@ CI_PLAN="$ROOT_DIR/docs/plans/2026-06-10-ci-baseline.md"
 CI_WORKFLOW="$ROOT_DIR/.github/workflows/check.yml"
 NON_TAB_REQUEST_PLAN="$ROOT_DIR/docs/plans/2026-06-10-chrome-blocker-non-tab-request-guard.md"
 BACKGROUND_TEST="$ROOT_DIR/scripts/test-background.js"
+TAB_LIFECYCLE_PLAN="$ROOT_DIR/docs/plans/2026-06-12-chrome-blocker-tab-lifecycle-helper-coverage.md"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -139,6 +140,13 @@ fi
 
 if ! grep -Fq "chrome.tabs.onRemoved.addListener(removeTabBlockingState)" "$BACKGROUND"; then
   printf '%s\n' "Background state must be removed when tabs close." >&2
+  exit 1
+fi
+
+if ! grep -Fq "setTabBlockingState(details.tabId, 0)" "$BACKGROUND" || \
+   ! grep -Fq "setTabBlockingState(details.tabId, getTabState(details.replacedTabId))" "$BACKGROUND" || \
+   ! grep -Fq "removeTabBlockingState(details.replacedTabId)" "$BACKGROUND"; then
+  printf '%s\n' "Background navigation and replacement paths must use centralized tab-state helpers." >&2
   exit 1
 fi
 
@@ -286,8 +294,15 @@ fi
 
 if ! grep -Fq 'tabId: -1' "$BACKGROUND_TEST" || \
    ! grep -Fq 'type: "main_frame"' "$BACKGROUND_TEST" || \
-   ! grep -Fq 'Background request boundary tests passed.' "$BACKGROUND_TEST"; then
+   ! grep -Fq 'Background request and tab lifecycle tests passed.' "$BACKGROUND_TEST"; then
   printf '%s\n' "Background tests must execute the invalid-tab and valid main-frame request boundary." >&2
+  exit 1
+fi
+
+if ! grep -Fq 'listeners.onCommitted({tabId: 8});' "$BACKGROUND_TEST" || \
+   ! grep -Fq 'listeners.onTabReplaced({tabId: 9, replacedTabId: 7});' "$BACKGROUND_TEST" || \
+   ! grep -Fq 'listeners.onRemoved(9);' "$BACKGROUND_TEST"; then
+  printf '%s\n' "Background tests must execute tab initialization, replacement, and cleanup listeners." >&2
   exit 1
 fi
 
@@ -342,6 +357,11 @@ fi
 
 if ! grep -Fq "background add and unblock paths use centralized tab state writes" "$README"; then
   printf '%s\n' "README must document centralized background tab-state writes." >&2
+  exit 1
+fi
+
+if ! grep -Fq "navigation, replacement, and removal paths use centralized tab state helpers" "$README"; then
+  printf '%s\n' "README must document centralized tab lifecycle state ownership." >&2
   exit 1
 fi
 
@@ -478,6 +498,12 @@ fi
 if ! grep -Fq "Status: Completed" "$NON_TAB_REQUEST_PLAN" || \
    ! grep -Fq "make check" "$NON_TAB_REQUEST_PLAN"; then
   printf '%s\n' "Chrome blocker non-tab request plan must record completed status and make check verification." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$TAB_LIFECYCLE_PLAN" || \
+   ! grep -Fq "make check" "$TAB_LIFECYCLE_PLAN"; then
+  printf '%s\n' "Chrome blocker tab lifecycle helper plan must record completed status and make check verification." >&2
   exit 1
 fi
 
