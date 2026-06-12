@@ -97,4 +97,18 @@ assert.deepStrictEqual(
 );
 assert.strictEqual(context.getTabState(7), "https://example.com");
 
-console.log("Background request boundary tests passed.");
+assert.strictEqual(typeof listeners.onCommitted, "function");
+listeners.onCommitted({tabId: 8});
+assert.strictEqual(context.getTabState(8), 0);
+
+listeners.onTabReplaced({tabId: 9, replacedTabId: 7});
+assert.strictEqual(context.getTabState(9), "https://example.com");
+assert.strictEqual(context.getTabState(7), 0);
+
+listeners.onTabReplaced({tabId: 10, replacedTabId: -1});
+assert.strictEqual(context.getTabState(10), 0);
+
+listeners.onRemoved(9);
+assert.strictEqual(context.getTabState(9), 0);
+
+console.log("Background request and tab lifecycle tests passed.");

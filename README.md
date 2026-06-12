@@ -100,6 +100,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   blocked origins instead of writing the same list twice.
 - The background add and unblock paths use centralized tab state writes so
   invalid tab ids cannot create stray per-tab entries.
+- Background navigation, replacement, and removal paths use centralized tab state helpers,
+  with executable Node coverage for state initialization, transfer, and cleanup.
 - The blocked page validates the current tab before unlisting a site or showing
   the unblock countdown.
 - The blocked page redirects back only after the guarded unlist path runs.
