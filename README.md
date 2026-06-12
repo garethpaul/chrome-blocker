@@ -70,6 +70,7 @@ state updates.
 GitHub Actions runs `make check` on Node 20, 22, and 24 for pushes, pull
 requests, and manual dispatches. The workflow uses commit-pinned actions,
 read-only repository access, and a bounded runtime.
+The job does not persist checkout credentials after source retrieval.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
