@@ -21,11 +21,15 @@ function addBlockedSite(tabid, blockedSite) {
 
 function unlistSite(tabid, site) {
   var normalizedSite = normalizeBlockedOrigin(site);
+  if (normalizedSite === "") {
+    return;
+  }
+
   var i = blockedSites.indexOf(normalizedSite);
   if (i > -1)
     blockedSites.splice(i, 1);
   chrome.storage.local.set({blocked: blockedSites});
-  setTabBlockingState(tabid, 0);
+  clearTabBlockingStatesForOrigin(normalizedSite);
 }
 
 function clearBlacklist() {
@@ -61,6 +65,15 @@ function setTabBlockingState(tabid, tabBlockingState) {
 function removeTabBlockingState(tabid) {
   if (isValidTabId(tabid)) {
     delete tabBlockingMap[tabid];
+  }
+}
+
+function clearTabBlockingStatesForOrigin(blockedOrigin) {
+  for (var tabid in tabBlockingMap) {
+    if (Object.prototype.hasOwnProperty.call(tabBlockingMap, tabid) &&
+        tabBlockingMap[tabid] === blockedOrigin) {
+      delete tabBlockingMap[tabid];
+    }
   }
 }
 

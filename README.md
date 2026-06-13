@@ -103,6 +103,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   invalid tab ids cannot create stray per-tab entries.
 - Background navigation, replacement, and removal paths use centralized tab state helpers,
   with executable Node coverage for state initialization, transfer, and cleanup.
+- A global unlisting clears matching state across every tracked tab while
+  preserving tabs blocked by other origins.
 - The blocked page validates the current tab before unlisting a site or showing
   the unblock countdown.
 - The blocked page redirects back only after the guarded unlist path runs.
@@ -133,6 +135,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   credential-bearing blocker URL guard.
 - See `docs/plans/2026-06-10-ci-baseline.md` for the hosted GitHub Actions
   baseline.
+- See `docs/plans/2026-06-13-chrome-blocker-global-unlist-state.md` for the
+  origin-wide tab cleanup boundary.
 - See `docs/plans/2026-06-10-chrome-blocker-non-tab-request-guard.md` for the
   background interception boundary and executable listener test.
 - A Manifest V3 migration remains separate work because it requires replacing

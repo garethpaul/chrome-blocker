@@ -1,5 +1,12 @@
 # Chrome Blocker Changes
 
+## 2026-06-13
+
+- Removed stale blocked state from every matching tab when an origin is
+  globally unlisted, while preserving state for other blocked origins.
+- Rejected invalid unlist origins before storage or tab-state mutation and
+  added executable multi-tab regression coverage.
+
 ## 2026-06-12
 
 - Disabled checkout credential persistence in the canonical Node matrix and

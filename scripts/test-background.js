@@ -64,6 +64,7 @@ for (const relativePath of ["js/urlRules.js", "js/background.js"]) {
 }
 
 assert.strictEqual(typeof listeners.onBeforeRequest, "function");
+assert.strictEqual(typeof context.clearTabBlockingStatesForOrigin, "function");
 assert.deepStrictEqual(plain(storedValues[0]), {blocked: ["https://example.com"]});
 
 assert.strictEqual(
@@ -111,4 +112,26 @@ assert.strictEqual(context.getTabState(10), 0);
 listeners.onRemoved(9);
 assert.strictEqual(context.getTabState(9), 0);
 
-console.log("Background request and tab lifecycle tests passed.");
+context.addBlockedSite(11, "https://example.com/path");
+context.addBlockedSite(12, "https://example.com/another");
+context.addBlockedSite(13, "https://other.test/path");
+assert.strictEqual(context.getTabState(11), "https://example.com");
+assert.strictEqual(context.getTabState(12), "https://example.com");
+assert.strictEqual(context.getTabState(13), "https://other.test");
+
+const writesBeforeUnlist = storedValues.length;
+context.unlistSite(11, "https://example.com/private");
+assert.strictEqual(storedValues.length, writesBeforeUnlist + 1);
+assert.deepStrictEqual(plain(storedValues[storedValues.length - 1]), {
+  blocked: ["https://other.test"]
+});
+assert.strictEqual(context.getTabState(11), 0);
+assert.strictEqual(context.getTabState(12), 0);
+assert.strictEqual(context.getTabState(13), "https://other.test");
+
+const writesBeforeInvalidUnlist = storedValues.length;
+context.unlistSite(13, "javascript:alert(1)");
+assert.strictEqual(storedValues.length, writesBeforeInvalidUnlist);
+assert.strictEqual(context.getTabState(13), "https://other.test");
+
+console.log("Background request, tab lifecycle, and global unlist tests passed.");

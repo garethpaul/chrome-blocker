@@ -21,8 +21,9 @@ NON_TAB_REQUEST_PLAN="$ROOT_DIR/docs/plans/2026-06-10-chrome-blocker-non-tab-req
 BACKGROUND_TEST="$ROOT_DIR/scripts/test-background.js"
 TAB_LIFECYCLE_PLAN="$ROOT_DIR/docs/plans/2026-06-12-chrome-blocker-tab-lifecycle-helper-coverage.md"
 CHECKOUT_CREDENTIAL_PLAN="$ROOT_DIR/docs/plans/2026-06-12-checkout-credential-boundary.md"
+GLOBAL_UNLIST_PLAN="$ROOT_DIR/docs/plans/2026-06-13-chrome-blocker-global-unlist-state.md"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -165,9 +166,29 @@ if ! grep -Fq "if (isValidTabId(tabid))" "$BACKGROUND"; then
   exit 1
 fi
 
-if ! grep -Fq "setTabBlockingState(tabid, normalizedSite)" "$BACKGROUND" ||
-  ! grep -Fq "setTabBlockingState(tabid, 0)" "$BACKGROUND"; then
-  printf '%s\n' "Background add/unlist paths must use centralized tab state writes." >&2
+if ! grep -Fq "setTabBlockingState(tabid, normalizedSite)" "$BACKGROUND" || \
+   ! grep -Fq "clearTabBlockingStatesForOrigin(normalizedSite)" "$BACKGROUND"; then
+  printf '%s\n' "Background add/unlist paths must use centralized tab state helpers." >&2
+  exit 1
+fi
+
+if ! grep -Fq "function clearTabBlockingStatesForOrigin(blockedOrigin)" "$BACKGROUND" || \
+   ! grep -Fq "Object.prototype.hasOwnProperty.call(tabBlockingMap, tabid)" "$BACKGROUND" || \
+   ! grep -Fq "tabBlockingMap[tabid] === blockedOrigin" "$BACKGROUND"; then
+  printf '%s\n' "Global unlisting must clear only owned tab states for the matching origin." >&2
+  exit 1
+fi
+
+if ! awk '
+  /function unlistSite\(tabid, site\)/ { in_unlist = 1 }
+  in_unlist && /if \(normalizedSite === ""\)/ { guard = NR }
+  in_unlist && /chrome.storage.local.set/ { write = NR }
+  /function clearBlacklist\(\)/ {
+    exit (guard && write && guard < write) ? 0 : 1
+  }
+  END { if (!in_unlist) exit 1 }
+' "$BACKGROUND"; then
+  printf '%s\n' "Global unlisting must reject invalid origins before persistence or tab cleanup." >&2
   exit 1
 fi
 
@@ -327,8 +348,27 @@ fi
 
 if ! grep -Fq 'tabId: -1' "$BACKGROUND_TEST" || \
    ! grep -Fq 'type: "main_frame"' "$BACKGROUND_TEST" || \
-   ! grep -Fq 'Background request and tab lifecycle tests passed.' "$BACKGROUND_TEST"; then
+   ! grep -Fq 'Background request, tab lifecycle, and global unlist tests passed.' "$BACKGROUND_TEST"; then
   printf '%s\n' "Background tests must execute the invalid-tab and valid main-frame request boundary." >&2
+  exit 1
+fi
+
+for global_unlist_fixture in \
+  'context.addBlockedSite(11, "https://example.com/path");' \
+  'context.addBlockedSite(12, "https://example.com/another");' \
+  'context.addBlockedSite(13, "https://other.test/path");' \
+  'context.unlistSite(11, "https://example.com/private");' \
+  'context.unlistSite(13, "javascript:alert(1)");'; do
+  if ! grep -Fq "$global_unlist_fixture" "$BACKGROUND_TEST"; then
+    printf '%s\n' "Background tests must preserve global-unlist fixture: $global_unlist_fixture" >&2
+    exit 1
+  fi
+done
+
+if ! grep -Fq 'assert.strictEqual(context.getTabState(12), 0);' "$BACKGROUND_TEST" || \
+   ! grep -Fq 'assert.strictEqual(context.getTabState(13), "https://other.test");' "$BACKGROUND_TEST" || \
+   ! grep -Fq 'assert.strictEqual(storedValues.length, writesBeforeInvalidUnlist);' "$BACKGROUND_TEST"; then
+  printf '%s\n' "Background tests must verify matching multi-tab cleanup and unrelated-state preservation." >&2
   exit 1
 fi
 
@@ -395,6 +435,14 @@ fi
 
 if ! grep -Fq "navigation, replacement, and removal paths use centralized tab state helpers" "$README"; then
   printf '%s\n' "README must document centralized tab lifecycle state ownership." >&2
+  exit 1
+fi
+
+if ! grep -Fq "global unlisting clears matching state across every tracked tab" "$README" || \
+   ! grep -Fq "origin-wide tab-state cleanup" "$ROOT_DIR/VISION.md" || \
+   ! grep -Fq "stale blocked state from every matching tab" "$ROOT_DIR/CHANGES.md" || \
+   ! grep -Fq "R5. Background tests and the static baseline" "$GLOBAL_UNLIST_PLAN"; then
+  printf '%s\n' "Global-unlist state consistency documentation and plan contracts must remain checked in." >&2
   exit 1
 fi
 
