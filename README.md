@@ -66,8 +66,8 @@ lookalike hosts, rejected credential-bearing blocker URLs, block-list
 deduplication, encoded redirect parameters for `blockedSite.html`, and scoped
 manifest host permissions.
 The background behavior test executes the real request listener with mocked
-Chrome APIs and covers invalid tab ids, subframes, valid redirects, and tab
-state updates.
+Chrome APIs and covers deferred and failed storage hydration, invalid tab ids,
+subframes, blocked redirects, allowed navigation, and tab state updates.
 The blocked-page behavior test executes the real runtime listener with mocked
 Chrome and DOM APIs and covers rejected unlist messages plus the accepted
 same-tab, same-origin request.
@@ -99,6 +99,9 @@ When the required SDK or runtime is unavailable, use static checks and source re
   non-tab navigation ids.
 - Non-tab main-frame requests are ignored before URL matching or redirect
   construction, keeping blocking behavior scoped to real browser tabs.
+- The background page cancels valid main-frame navigation until local block-list hydration succeeds;
+  storage read failures remain closed, and canceled URLs are neither logged nor
+  retained for replay.
 - The content-script redirect messages are normalized before constructing
   `blockedSite.html` URLs.
 - The background page owns block-list storage writes; the popup delegates new
@@ -148,6 +151,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   typed popup-to-blocked-page unlist request boundary.
 - See `docs/plans/2026-06-10-chrome-blocker-non-tab-request-guard.md` for the
   background interception boundary and executable listener test.
+- See `docs/plans/2026-06-13-chrome-blocker-startup-hydration-gate.md` for the
+  fail-closed background startup boundary.
 - A Manifest V3 migration remains separate work because it requires replacing
   blocking `webRequest` behavior and persistent background-page calls, not just
   changing the manifest version.

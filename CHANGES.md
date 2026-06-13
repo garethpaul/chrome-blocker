@@ -2,6 +2,9 @@
 
 ## 2026-06-13
 
+- Closed the asynchronous block-list startup interval by canceling valid
+  main-frame requests until successful local-storage hydration, while preserving
+  ignored invalid request classes and normal post-hydration behavior.
 - Replaced raw numeric popup unlist broadcasts with typed runtime requests
   containing the active tab id and normalized blocked origin.
 - Rejected malformed, wrong-action, wrong-tab, and wrong-origin unlist messages

@@ -24,8 +24,9 @@ CHECKOUT_CREDENTIAL_PLAN="$ROOT_DIR/docs/plans/2026-06-12-checkout-credential-bo
 GLOBAL_UNLIST_PLAN="$ROOT_DIR/docs/plans/2026-06-13-chrome-blocker-global-unlist-state.md"
 UNLIST_MESSAGE_PLAN="$ROOT_DIR/docs/plans/2026-06-13-chrome-blocker-unlist-message-contract.md"
 BLOCKED_SITE_TEST="$ROOT_DIR/scripts/test-blocked-site.js"
+STARTUP_HYDRATION_PLAN="$ROOT_DIR/docs/plans/2026-06-13-chrome-blocker-startup-hydration-gate.md"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -350,7 +351,7 @@ fi
 
 if ! grep -Fq 'tabId: -1' "$BACKGROUND_TEST" || \
    ! grep -Fq 'type: "main_frame"' "$BACKGROUND_TEST" || \
-   ! grep -Fq 'Background request, tab lifecycle, and global unlist tests passed.' "$BACKGROUND_TEST"; then
+   ! grep -Fq 'Background startup, request, tab lifecycle, and global unlist tests passed.' "$BACKGROUND_TEST"; then
   printf '%s\n' "Background tests must execute the invalid-tab and valid main-frame request boundary." >&2
   exit 1
 fi
@@ -382,11 +383,93 @@ if ! grep -Fq 'listeners.onCommitted({tabId: 8});' "$BACKGROUND_TEST" || \
 fi
 
 if [ "$(grep -Fc 'tabId: -1' "$BACKGROUND_TEST")" -ne 1 ] || \
-   [ "$(grep -Fc 'type: "main_frame"' "$BACKGROUND_TEST")" -ne 2 ] || \
+   [ "$(grep -Fc 'type: "main_frame"' "$BACKGROUND_TEST")" -ne 6 ] || \
    [ "$(grep -Fc 'type: "sub_frame"' "$BACKGROUND_TEST")" -ne 1 ]; then
   printf '%s\n' "Background tests must preserve invalid-tab, subframe, and valid main-frame fixtures." >&2
   exit 1
 fi
+
+for startup_source_contract in \
+  'var blockedSitesReady = false;' \
+  'if (chrome.runtime.lastError)' \
+  'blockedSites = normalizeBlockedList(items && items.blocked);' \
+  'if (!blockedSitesReady)' \
+  'return {cancel: true};' \
+  'blockedSitesReady = true;'; do
+  if [ "$(grep -Fc "$startup_source_contract" "$BACKGROUND")" -ne 1 ]; then
+    printf '%s\n' "Background startup hydration contract must remain unique: $startup_source_contract" >&2
+    exit 1
+  fi
+done
+
+storage_initial_line=$(grep -nF 'var blockedSitesReady = false;' "$BACKGROUND" | cut -d: -f1)
+storage_get_line=$(grep -nF 'chrome.storage.local.get("blocked", function(items)' "$BACKGROUND" | cut -d: -f1)
+storage_error_line=$(grep -nF 'if (chrome.runtime.lastError)' "$BACKGROUND" | cut -d: -f1)
+storage_normalize_line=$(grep -nF 'blockedSites = normalizeBlockedList(items && items.blocked);' "$BACKGROUND" | cut -d: -f1)
+storage_set_line=$(grep -nF 'chrome.storage.local.set({blocked: blockedSites});' "$BACKGROUND" | head -n 1 | cut -d: -f1)
+storage_ready_line=$(grep -nF 'blockedSitesReady = true;' "$BACKGROUND" | cut -d: -f1)
+request_ready_guard_line=$(grep -nF 'if (!blockedSitesReady)' "$BACKGROUND" | cut -d: -f1)
+request_cancel_line=$(grep -nF 'return {cancel: true};' "$BACKGROUND" | cut -d: -f1)
+request_match_line=$(grep -nF 'var tabBlockingState = findBlockedSite(request.url);' "$BACKGROUND" | cut -d: -f1)
+request_shape_line=$(grep -nF 'if (!request || request.type !== "main_frame" || !request.url ||' "$BACKGROUND" | cut -d: -f1)
+
+for startup_line in "$storage_initial_line" "$storage_get_line" "$storage_error_line" "$storage_normalize_line" \
+  "$storage_set_line" "$storage_ready_line" "$request_ready_guard_line" \
+  "$request_cancel_line" "$request_match_line" "$request_shape_line"; do
+  if [ -z "$startup_line" ]; then
+    printf '%s\n' "Startup hydration ordering markers must remain present." >&2
+    exit 1
+  fi
+done
+
+if [ "$storage_initial_line" -ge "$storage_get_line" ] || \
+   [ "$storage_get_line" -ge "$storage_error_line" ] || \
+   [ "$storage_error_line" -ge "$storage_normalize_line" ] || \
+   [ "$storage_normalize_line" -ge "$storage_set_line" ] || \
+   [ "$storage_set_line" -ge "$storage_ready_line" ] || \
+   [ "$request_shape_line" -ge "$request_ready_guard_line" ] || \
+   [ "$request_ready_guard_line" -ge "$request_cancel_line" ] || \
+   [ "$request_cancel_line" -ge "$request_match_line" ]; then
+  printf '%s\n' "Storage hydration and request enforcement must remain fail-closed in source order." >&2
+  exit 1
+fi
+
+for startup_test_contract in \
+  'function createBackgroundHarness()' \
+  'const storageErrorHarness = createBackgroundHarness();' \
+  '{message: "storage unavailable"}' \
+  'assert.strictEqual(storageErrorHarness.context.blockedSitesReady, false);' \
+  'assert.strictEqual(listeners.onBeforeRequest(null), undefined);' \
+  'harness.finishStorageRead({blocked: ["https://example.com"]});' \
+  'assert.strictEqual(context.blockedSitesReady, true);' \
+  'url: "https://allowed.test/path"' \
+  'Background startup, request, tab lifecycle, and global unlist tests passed.'; do
+  if ! grep -Fq "$startup_test_contract" "$BACKGROUND_TEST"; then
+    printf '%s\n' "Background VM test must preserve startup hydration fixture: $startup_test_contract" >&2
+    exit 1
+  fi
+done
+
+if ! grep -Fq "cancels valid main-frame navigation until local block-list hydration succeeds" "$README" || \
+   ! grep -Fq "fail closed while local block-list storage is unresolved" "$ROOT_DIR/SECURITY.md" || \
+   ! grep -Fq "fail-closed block-list startup hydration" "$ROOT_DIR/VISION.md" || \
+   ! grep -Fq "Closed the asynchronous block-list startup interval" "$ROOT_DIR/CHANGES.md" || \
+   ! grep -Fq "R5. A storage read error must leave hydration incomplete" "$STARTUP_HYDRATION_PLAN"; then
+  printf '%s\n' "Startup hydration documentation and plan contracts must remain checked in." >&2
+  exit 1
+fi
+
+for startup_plan_contract in \
+  "status: completed" \
+  "## Status: Completed" \
+  "make verify" \
+  "Five isolated hostile source mutations were rejected" \
+  '`agent-browser` is unavailable'; do
+  if ! grep -Fq "$startup_plan_contract" "$STARTUP_HYDRATION_PLAN"; then
+    printf '%s\n' "Startup hydration plan must record completed verification: $startup_plan_contract" >&2
+    exit 1
+  fi
+done
 
 if [ ! -f "$ROOT_DIR/Makefile" ] || \
    ! grep -Fq 'ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))' "$ROOT_DIR/Makefile" || \

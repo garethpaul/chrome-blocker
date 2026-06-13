@@ -1,13 +1,13 @@
 ---
 title: Chrome Blocker Startup Hydration Gate
 type: reliability
-status: planned
+status: completed
 date: 2026-06-13
 ---
 
 # Chrome Blocker Startup Hydration Gate
 
-## Status: Planned
+## Status: Completed
 
 ## Problem Frame
 
@@ -127,3 +127,30 @@ milliseconds later.
    Manifest V3 architecture without weakening startup enforcement.
 2. Add extension-capable browser integration coverage for startup cancellation,
    blocked redirects, popup unlisting, and incognito split-mode behavior.
+
+## Work Completed
+
+- Added explicit block-list readiness state that starts closed and becomes ready
+  only after a successful local-storage read and normalization.
+- Kept malformed, invalid-tab, and non-main-frame requests on their existing
+  ignored path, while canceling valid main-frame requests during hydration.
+- Left storage read errors fail-closed and restored existing blocked redirects,
+  allowed navigation, and tab-state behavior after successful hydration.
+- Reworked the real-script VM harness so storage completion is controlled by the
+  test and successful and failed background instances remain isolated.
+- Added static ordering, source, fixture, documentation, and plan contracts.
+
+## Verification Completed
+
+- `node scripts/test-background.js`, `make test`, `make check`, and `make verify`
+  passed.
+- The repository `make check` wrapper passed from `/tmp`.
+- `node --check` for modified JavaScript, `sh -n scripts/check-baseline.sh`, and
+  `git diff --check` passed.
+- Five isolated hostile source mutations were rejected: initially ready,
+  fail-open startup, premature readiness, ignored storage errors, and a
+  synchronous fake that hid the hydration interval.
+- Two isolated hostile plan mutations were rejected: stale completion status
+  and missing mutation-verification evidence.
+- `agent-browser` is unavailable. A local Google Chrome binary exists, but no
+  automated unpacked-extension or incognito integration coverage is claimed.

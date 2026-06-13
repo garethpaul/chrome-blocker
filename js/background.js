@@ -1,9 +1,15 @@
 var blockedSites = [];
+var blockedSitesReady = false;
 var tabBlockingMap = {};
 
 chrome.storage.local.get("blocked", function(items) {
-  blockedSites = normalizeBlockedList(items.blocked);
+  if (chrome.runtime.lastError) {
+    return;
+  }
+
+  blockedSites = normalizeBlockedList(items && items.blocked);
   chrome.storage.local.set({blocked: blockedSites});
+  blockedSitesReady = true;
 });
 
 function addBlockedSite(tabid, blockedSite) {
@@ -81,6 +87,10 @@ function requestChecker(request) {
   if (!request || request.type !== "main_frame" || !request.url ||
       !isValidTabId(request.tabId)) {
     return;
+  }
+
+  if (!blockedSitesReady) {
+    return {cancel: true};
   }
 
   var tabBlockingState = findBlockedSite(request.url);

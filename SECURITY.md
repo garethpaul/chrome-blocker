@@ -37,6 +37,9 @@ Helpful reports include:
   actions, read-only repository access, and bounded execution so URL-rule,
   tab-state, host-permission, and redirect guardrails stay enforced before
   merge.
+- Main-frame interception remains fail closed while local block-list storage is unresolved;
+  startup-window URLs are canceled without logging, persistence, or hidden
+  replay.
 
 ## Service and API Notes
 
