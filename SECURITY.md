@@ -40,6 +40,9 @@ Helpful reports include:
 - Main-frame interception remains fail closed while local block-list storage is unresolved;
   startup-window URLs are canceled without logging, persistence, or hidden
   replay.
+- Successful hydration must replay queued block-list mutations after the trusted
+  snapshot is installed; storage failure drops queued actions rather than
+  applying them to unknown state.
 
 ## Service and API Notes
 

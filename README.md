@@ -102,6 +102,9 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - The background page cancels valid main-frame navigation until local block-list hydration succeeds;
   storage read failures remain closed, and canceled URLs are neither logged nor
   retained for replay.
+- Successful startup hydration must replay queued block-list mutations after the
+  loaded snapshot is installed; failed hydration drops queued actions while
+  navigation remains fail closed.
 - The content-script redirect messages are normalized before constructing
   `blockedSite.html` URLs.
 - The background page owns block-list storage writes; the popup delegates new

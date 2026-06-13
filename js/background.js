@@ -1,16 +1,42 @@
 var blockedSites = [];
 var blockedSitesReady = false;
+var blockedSitesHydrationFailed = false;
+var pendingBlockedListMutations = [];
 var tabBlockingMap = {};
 
 chrome.storage.local.get("blocked", function(items) {
   if (chrome.runtime.lastError) {
+    blockedSitesHydrationFailed = true;
+    pendingBlockedListMutations = [];
     return;
   }
 
   blockedSites = normalizeBlockedList(items && items.blocked);
   chrome.storage.local.set({blocked: blockedSites});
   blockedSitesReady = true;
+  flushPendingBlockedListMutations();
 });
+
+function runBlockedListMutation(mutation) {
+  if (blockedSitesHydrationFailed) {
+    return;
+  }
+
+  if (!blockedSitesReady) {
+    pendingBlockedListMutations.push(mutation);
+    return;
+  }
+
+  mutation();
+}
+
+function flushPendingBlockedListMutations() {
+  var queuedMutations = pendingBlockedListMutations;
+  pendingBlockedListMutations = [];
+  for (var i = 0; i < queuedMutations.length; ++i) {
+    queuedMutations[i]();
+  }
+}
 
 function addBlockedSite(tabid, blockedSite) {
   var normalizedSite = normalizeBlockedOrigin(blockedSite);
@@ -18,11 +44,13 @@ function addBlockedSite(tabid, blockedSite) {
     return;
   }
 
-  if (blockedSites.indexOf(normalizedSite) === -1) {
-    blockedSites.push(normalizedSite);
-    chrome.storage.local.set({blocked: blockedSites});
-  }
-  setTabBlockingState(tabid, normalizedSite);
+  runBlockedListMutation(function() {
+    if (blockedSites.indexOf(normalizedSite) === -1) {
+      blockedSites.push(normalizedSite);
+      chrome.storage.local.set({blocked: blockedSites});
+    }
+    setTabBlockingState(tabid, normalizedSite);
+  });
 }
 
 function unlistSite(tabid, site) {
@@ -31,17 +59,21 @@ function unlistSite(tabid, site) {
     return;
   }
 
-  var i = blockedSites.indexOf(normalizedSite);
-  if (i > -1)
-    blockedSites.splice(i, 1);
-  chrome.storage.local.set({blocked: blockedSites});
-  clearTabBlockingStatesForOrigin(normalizedSite);
+  runBlockedListMutation(function() {
+    var i = blockedSites.indexOf(normalizedSite);
+    if (i > -1)
+      blockedSites.splice(i, 1);
+    chrome.storage.local.set({blocked: blockedSites});
+    clearTabBlockingStatesForOrigin(normalizedSite);
+  });
 }
 
 function clearBlacklist() {
-  blockedSites = [];
-  tabBlockingMap = {};
-  chrome.storage.local.set({blocked: blockedSites});
+  runBlockedListMutation(function() {
+    blockedSites = [];
+    tabBlockingMap = {};
+    chrome.storage.local.set({blocked: blockedSites});
+  });
 }
 
 function getTabState(tabid) {

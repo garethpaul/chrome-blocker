@@ -27,7 +27,7 @@ function createBackgroundHarness() {
             storageGetCallback = callback;
           },
           set(value) {
-            storedValues.push(value);
+            storedValues.push(plain(value));
           }
         }
       },
@@ -80,6 +80,8 @@ function createBackgroundHarness() {
 }
 
 const storageErrorHarness = createBackgroundHarness();
+storageErrorHarness.context.addBlockedSite(5, "https://queued.test/path");
+assert.strictEqual(storageErrorHarness.context.pendingBlockedListMutations.length, 1);
 assert.deepStrictEqual(
   plain(storageErrorHarness.listeners.onBeforeRequest({
     tabId: 4,
@@ -93,6 +95,12 @@ storageErrorHarness.finishStorageRead(
   {message: "storage unavailable"}
 );
 assert.strictEqual(storageErrorHarness.context.blockedSitesReady, false);
+assert.strictEqual(storageErrorHarness.context.pendingBlockedListMutations.length, 0);
+assert.strictEqual(storageErrorHarness.context.getTabState(5), 0);
+assert.strictEqual(storageErrorHarness.context.blockedSitesHydrationFailed, true);
+storageErrorHarness.context.addBlockedSite(6, "https://after-error.test/path");
+assert.strictEqual(storageErrorHarness.context.pendingBlockedListMutations.length, 0);
+assert.strictEqual(storageErrorHarness.context.getTabState(6), 0);
 assert.strictEqual(storageErrorHarness.storedValues.length, 0);
 assert.deepStrictEqual(
   plain(storageErrorHarness.listeners.onBeforeRequest({
@@ -101,6 +109,22 @@ assert.deepStrictEqual(
     url: "https://example.com/private"
   })),
   {cancel: true}
+);
+
+const queuedMutationHarness = createBackgroundHarness();
+queuedMutationHarness.context.addBlockedSite(5, "https://queued.test/path");
+assert.strictEqual(queuedMutationHarness.context.pendingBlockedListMutations.length, 1);
+assert.strictEqual(queuedMutationHarness.storedValues.length, 0);
+assert.strictEqual(queuedMutationHarness.context.getTabState(5), 0);
+queuedMutationHarness.finishStorageRead({blocked: ["https://existing.test"]});
+assert.strictEqual(queuedMutationHarness.context.pendingBlockedListMutations.length, 0);
+assert.deepStrictEqual(plain(queuedMutationHarness.storedValues), [
+  {blocked: ["https://existing.test"]},
+  {blocked: ["https://existing.test", "https://queued.test"]}
+]);
+assert.strictEqual(
+  queuedMutationHarness.context.getTabState(5),
+  "https://queued.test"
 );
 
 const harness = createBackgroundHarness();

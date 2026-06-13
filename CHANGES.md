@@ -2,6 +2,9 @@
 
 ## 2026-06-13
 
+- Updated successful startup hydration to replay queued block-list mutations,
+  preserving add, unlist, and clear actions while dropping queued actions on
+  storage failure.
 - Closed the asynchronous block-list startup interval by canceling valid
   main-frame requests until successful local-storage hydration, while preserving
   ignored invalid request classes and normal post-hydration behavior.
