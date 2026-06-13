@@ -22,8 +22,10 @@ BACKGROUND_TEST="$ROOT_DIR/scripts/test-background.js"
 TAB_LIFECYCLE_PLAN="$ROOT_DIR/docs/plans/2026-06-12-chrome-blocker-tab-lifecycle-helper-coverage.md"
 CHECKOUT_CREDENTIAL_PLAN="$ROOT_DIR/docs/plans/2026-06-12-checkout-credential-boundary.md"
 GLOBAL_UNLIST_PLAN="$ROOT_DIR/docs/plans/2026-06-13-chrome-blocker-global-unlist-state.md"
+UNLIST_MESSAGE_PLAN="$ROOT_DIR/docs/plans/2026-06-13-chrome-blocker-unlist-message-contract.md"
+BLOCKED_SITE_TEST="$ROOT_DIR/scripts/test-blocked-site.js"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -388,8 +390,28 @@ fi
 
 if [ ! -f "$ROOT_DIR/Makefile" ] || \
    ! grep -Fq 'ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))' "$ROOT_DIR/Makefile" || \
-   ! grep -Fq '$(ROOT)scripts/test-background.js' "$ROOT_DIR/Makefile"; then
+   ! grep -Fq '$(ROOT)scripts/test-background.js' "$ROOT_DIR/Makefile" || \
+   ! grep -Fq '$(ROOT)scripts/test-blocked-site.js' "$ROOT_DIR/Makefile"; then
   printf '%s\n' "Makefile must run rooted source and background behavior checks." >&2
+  exit 1
+fi
+
+if ! grep -Fq 'action: "beginUnlist"' "$POPUP" || \
+   ! grep -Fq 'tabId: tab.id' "$POPUP" || \
+   ! grep -Fq 'blockedSite: normalizedSite' "$POPUP" || \
+   ! grep -Fq 'function isValidUnlistMessage(message, tab)' "$BLOCKED_SITE" || \
+   ! grep -Fq 'message.action === "beginUnlist"' "$BLOCKED_SITE" || \
+   ! grep -Fq 'tab.id === message.tabId' "$BLOCKED_SITE" || \
+   ! grep -Fq 'normalizeBlockedOrigin(message.blockedSite) === site' "$BLOCKED_SITE"; then
+  printf '%s\n' "Popup and blocked page must preserve the typed unlist message boundary." >&2
+  exit 1
+fi
+
+if ! grep -Fq 'const rejectedMessages = [' "$BLOCKED_SITE_TEST" || \
+   ! grep -Fq '{action: "beginUnlist", tabId: 8' "$BLOCKED_SITE_TEST" || \
+   ! grep -Fq 'blockedSite: "https://other.test"' "$BLOCKED_SITE_TEST" || \
+   ! grep -Fq 'assert.strictEqual(intervalStarts, 0);' "$BLOCKED_SITE_TEST"; then
+  printf '%s\n' "Blocked-page tests must cover primitive, wrong-tab, and wrong-origin rejection." >&2
   exit 1
 fi
 
@@ -448,6 +470,16 @@ fi
 
 if ! grep -Fq "blocked page validates the current tab before unlisting" "$README"; then
   printf '%s\n' "README must document blocked-page current-tab validation." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Popup unlist requests use a typed runtime message" "$README" || \
+   ! grep -Fq "typed runtime requests" "$ROOT_DIR/CHANGES.md" || \
+   ! grep -Fq "Require typed unlist messages" "$ROOT_DIR/VISION.md" || \
+   ! grep -Fq "R5. Executable behavior tests and the static baseline" "$UNLIST_MESSAGE_PLAN" || \
+   ! grep -Fq "status: completed" "$UNLIST_MESSAGE_PLAN" || \
+   ! grep -Fq "Six isolated hostile mutations" "$UNLIST_MESSAGE_PLAN"; then
+  printf '%s\n' "Typed unlist message documentation and plan contracts must remain checked in." >&2
   exit 1
 fi
 

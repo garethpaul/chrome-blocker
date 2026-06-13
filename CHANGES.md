@@ -2,6 +2,12 @@
 
 ## 2026-06-13
 
+- Replaced raw numeric popup unlist broadcasts with typed runtime requests
+  containing the active tab id and normalized blocked origin.
+- Rejected malformed, wrong-action, wrong-tab, and wrong-origin unlist messages
+  before showing the blocked-page countdown modal or starting its timer.
+- Added VM coverage for the blocked-page runtime listener and wired it into the
+  repository test and static verification gates.
 - Removed stale blocked state from every matching tab when an origin is
   globally unlisted, while preserving state for other blocked origins.
 - Rejected invalid unlist origins before storage or tab-state mutation and

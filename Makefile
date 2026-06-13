@@ -9,6 +9,7 @@ lint:
 test:
 	$(NODE) $(ROOT)scripts/test-url-rules.js
 	$(NODE) $(ROOT)scripts/test-background.js
+	$(NODE) $(ROOT)scripts/test-blocked-site.js
 
 build: lint
 

@@ -2,7 +2,7 @@
 title: Chrome Blocker Unlist Message Contract
 type: fix
 date: 2026-06-13
-status: planned
+status: completed
 ---
 
 # Chrome Blocker Unlist Message Contract
@@ -82,6 +82,21 @@ page to compare with its own validated query parameter.
   missing test wiring; each mutation must fail the relevant gate.
 - Use `agent-browser` only if installed; otherwise record that interactive
   unpacked-extension behavior was not automated locally.
+
+## Verification Results
+
+- `node scripts/test-blocked-site.js` passed with rejected primitive,
+  malformed, wrong-action, wrong-tab, credential-bearing, and wrong-origin
+  messages plus accepted normalized same-origin requests.
+- `make test`, `make check`, and the absolute-path `make check` wrapper from
+  `/tmp` passed.
+- `sh -n`, Node syntax checks, whitespace validation, and explicit
+  secret/artifact scans passed.
+- Six isolated hostile mutations covering raw numeric acceptance, omitted
+  action validation, omitted tab validation, omitted origin validation, popup
+  action drift, and removed test wiring were each rejected.
+- `agent-browser` was not installed, so no interactive unpacked-extension
+  browser claim is made.
 
 ## Prioritized Follow-Ups
 

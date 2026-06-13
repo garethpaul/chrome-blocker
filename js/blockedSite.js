@@ -56,13 +56,24 @@ function hideModal() {
   $("#unlistModal").modal("hide");
 }
 
+function isValidUnlistMessage(message, tab) {
+  if (site === "" || !message || typeof message !== "object") {
+    return false;
+  }
+
+  return message.action === "beginUnlist" &&
+      typeof message.tabId === "number" &&
+      tab.id === message.tabId &&
+      normalizeBlockedOrigin(message.blockedSite) === site;
+}
+
 $("#unlistModal").on('hidden', modalHidden);
 $("#cancelUnlist").click(hideModal);
 
 chrome.runtime.onMessage.addListener(
     function(message, sender, sendResponse) {
   withCurrentTab(function(tab) {
-    if (site !== "" && tab.id == message) {
+    if (isValidUnlistMessage(message, tab)) {
       $("#unlistModal").modal("show");
       beginCountdown();
     }

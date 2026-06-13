@@ -17,8 +17,17 @@ function clearBlacklist() {
 }
 
 function unlist() {
+  var normalizedSite = normalizeBlockedOrigin(tabState);
+  if (normalizedSite === "") {
+    return;
+  }
+
   getCurrentTab(function(tab) {
-    chrome.runtime.sendMessage(tab.id);
+    chrome.runtime.sendMessage({
+      action: "beginUnlist",
+      tabId: tab.id,
+      blockedSite: normalizedSite
+    });
   });
 }
 

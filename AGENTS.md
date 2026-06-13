@@ -43,6 +43,7 @@
 
 - Detected references to Twitter. Keep API keys, OAuth credentials, tokens, and account-specific values in local configuration only.
 - The blocked-page unblock countdown clears any prior interval before starting a new timer and resets interval state when the modal closes.
+- Popup-to-blocked-page unlist requests are typed and must match both the current numeric tab id and normalized blocked origin.
 - Background tab blocking state is removed when tabs close and ignores invalid non-tab navigation ids.
 - The content-script redirect messages are normalized before constructing `blockedSite.html` URLs.
 - The background page owns block-list storage writes; the popup delegates new blocked origins instead of writing the same list twice.
