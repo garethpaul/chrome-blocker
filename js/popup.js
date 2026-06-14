@@ -13,7 +13,12 @@ function getCurrentTab(callback) {
 }
 
 function clearBlacklist() {
-  chrome.runtime.sendMessage({action: "background:clearBlacklist"});
+  chrome.runtime.sendMessage({action: "background:clearBlacklist"}, function(response) {
+    if (chrome.runtime.lastError || !response || response.ok !== true) {
+      return;
+    }
+    tabState = 0;
+  });
 }
 
 function unlist() {
@@ -32,26 +37,25 @@ function unlist() {
 }
 
 function blacklistSite() {
-  chrome.storage.local.get("blocked", function(items) {
-    var blockedSites = normalizeBlockedList(items.blocked);
+  getCurrentTab(function(tab) {
+    chrome.tabs.sendMessage(tab.id, {action: "geturl"}, function(response) {
+      if (chrome.runtime.lastError || !response || !response.URL) {
+        return;
+      }
 
-    getCurrentTab(function(tab) {
-      chrome.tabs.sendMessage(tab.id, {action: "geturl"}, function(response) {
-        if (chrome.runtime.lastError || !response || !response.URL) {
+      var urlToBlock = normalizeBlockedOrigin(response.URL);
+      if (urlToBlock === "") {
+        return;
+      }
+
+      chrome.runtime.sendMessage({
+        action: "background:addBlockedSite",
+        tabId: tab.id,
+        blockedSite: urlToBlock
+      }, function(mutationResponse) {
+        if (chrome.runtime.lastError || !mutationResponse ||
+            mutationResponse.ok !== true) {
           return;
-        }
-
-        var urlToBlock = normalizeBlockedOrigin(response.URL);
-        if (urlToBlock === "") {
-          return;
-        }
-
-        if (blockedSites.indexOf(urlToBlock) === -1) {
-          chrome.runtime.sendMessage({
-            action: "background:addBlockedSite",
-            tabId: tab.id,
-            blockedSite: urlToBlock
-          });
         }
         chrome.tabs.sendMessage(tab.id, {action: "redirect", blockedSite: urlToBlock});
       });

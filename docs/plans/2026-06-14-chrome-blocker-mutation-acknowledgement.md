@@ -1,6 +1,6 @@
 # Chrome Blocker Mutation Acknowledgement
 
-Status: In Progress
+Status: Completed
 
 ## Problem
 
@@ -87,3 +87,23 @@ missing or unsuccessful responses.
   `true` when `sendResponse` will run asynchronously.
 - The initial normalization write is part of hydration readiness: request
   processing and queued mutations remain fail-closed until that write succeeds.
+
+## Verification: Completed
+
+- `node --check js/background.js`, `node --check js/popup.js`, and
+  `sh -n scripts/check-baseline.sh` pass.
+- `node scripts/test-background.js`, `node scripts/test-popup.js`, and
+  `node scripts/test-blocked-site.js` pass.
+- Full `make check` passes from the repository root and through the absolute
+  Makefile path from an unrelated working directory.
+- Nine focused hostile mutations were rejected: omitted literal-true channel
+  retention, ignored persistence errors, premature state publication, disabled
+  serialization, immediate add acknowledgement, popup add and clear response
+  bypasses, removed failure regression coverage, and documentation drift.
+- Two focused plan mutations were rejected for stale completion status and
+  missing mutation-verification evidence.
+- Compound Engineering code review reported no actionable findings. Artifacts
+  are recorded at
+  `/tmp/compound-engineering/ce-code-review/chrome-blocker-mutation-acknowledgement-20260614/`.
+- `agent-browser` is unavailable, and this Manifest V2 extension exposes no
+  local HTTP route; no unpacked-extension browser execution is claimed.

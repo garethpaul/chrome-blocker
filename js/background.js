@@ -2,78 +2,129 @@ var blockedSites = [];
 var blockedSitesReady = false;
 var blockedSitesHydrationFailed = false;
 var pendingBlockedListMutations = [];
+var blockedListMutationInProgress = false;
 var tabBlockingMap = {};
 
 chrome.storage.local.get("blocked", function(items) {
   if (chrome.runtime.lastError) {
-    blockedSitesHydrationFailed = true;
-    pendingBlockedListMutations = [];
+    failBlockedListHydration();
     return;
   }
 
-  blockedSites = normalizeBlockedList(items && items.blocked);
-  chrome.storage.local.set({blocked: blockedSites});
-  blockedSitesReady = true;
-  flushPendingBlockedListMutations();
+  var hydratedBlockedSites = normalizeBlockedList(items && items.blocked);
+  chrome.storage.local.set({blocked: hydratedBlockedSites}, function() {
+    if (chrome.runtime.lastError) {
+      failBlockedListHydration();
+      return;
+    }
+
+    blockedSites = hydratedBlockedSites;
+    blockedSitesReady = true;
+    flushPendingBlockedListMutations();
+  });
 });
 
-function runBlockedListMutation(mutation) {
-  if (blockedSitesHydrationFailed) {
-    return;
-  }
-
-  if (!blockedSitesReady) {
-    pendingBlockedListMutations.push(mutation);
-    return;
-  }
-
-  mutation();
-}
-
-function flushPendingBlockedListMutations() {
+function failBlockedListHydration() {
+  blockedSitesHydrationFailed = true;
   var queuedMutations = pendingBlockedListMutations;
   pendingBlockedListMutations = [];
   for (var i = 0; i < queuedMutations.length; ++i) {
-    queuedMutations[i]();
+    queuedMutations[i].completion(false);
   }
 }
 
-function addBlockedSite(tabid, blockedSite) {
+function runBlockedListMutation(mutation, completion) {
+  var mutationCompletion = typeof completion === "function" ? completion : function() {};
+  if (blockedSitesHydrationFailed) {
+    mutationCompletion(false);
+    return;
+  }
+
+  pendingBlockedListMutations.push({
+    mutation: mutation,
+    completion: mutationCompletion
+  });
+  flushPendingBlockedListMutations();
+}
+
+function flushPendingBlockedListMutations() {
+  if (!blockedSitesReady || blockedListMutationInProgress ||
+      pendingBlockedListMutations.length === 0) {
+    return;
+  }
+
+  var queuedMutation = pendingBlockedListMutations.shift();
+  blockedListMutationInProgress = true;
+  queuedMutation.mutation(function(success) {
+    blockedListMutationInProgress = false;
+    queuedMutation.completion(success);
+    flushPendingBlockedListMutations();
+  });
+}
+
+function persistBlockedSites(nextBlockedSites, commit, completion) {
+  chrome.storage.local.set({blocked: nextBlockedSites}, function() {
+    if (chrome.runtime.lastError) {
+      completion(false);
+      return;
+    }
+
+    blockedSites = nextBlockedSites;
+    commit();
+    completion(true);
+  });
+}
+
+function addBlockedSite(tabid, blockedSite, completion) {
   var normalizedSite = normalizeBlockedOrigin(blockedSite);
   if (normalizedSite === "") {
+    if (typeof completion === "function") {
+      completion(false);
+    }
     return;
   }
 
-  runBlockedListMutation(function() {
-    if (blockedSites.indexOf(normalizedSite) === -1) {
-      blockedSites.push(normalizedSite);
-      chrome.storage.local.set({blocked: blockedSites});
+  runBlockedListMutation(function(done) {
+    if (blockedSites.indexOf(normalizedSite) !== -1) {
+      setTabBlockingState(tabid, normalizedSite);
+      done(true);
+      return;
     }
-    setTabBlockingState(tabid, normalizedSite);
-  });
+
+    var nextBlockedSites = blockedSites.slice();
+    nextBlockedSites.push(normalizedSite);
+    persistBlockedSites(nextBlockedSites, function() {
+      setTabBlockingState(tabid, normalizedSite);
+    }, done);
+  }, completion);
 }
 
-function unlistSite(tabid, site) {
+function unlistSite(tabid, site, completion) {
   var normalizedSite = normalizeBlockedOrigin(site);
   if (normalizedSite === "") {
+    if (typeof completion === "function") {
+      completion(false);
+    }
     return;
   }
 
-  runBlockedListMutation(function() {
+  runBlockedListMutation(function(done) {
+    var nextBlockedSites = blockedSites.slice();
     var i = blockedSites.indexOf(normalizedSite);
     if (i > -1)
-      blockedSites.splice(i, 1);
-    chrome.storage.local.set({blocked: blockedSites});
-    clearTabBlockingStatesForOrigin(normalizedSite);
-  });
+      nextBlockedSites.splice(i, 1);
+    persistBlockedSites(nextBlockedSites, function() {
+      clearTabBlockingStatesForOrigin(normalizedSite);
+    }, done);
+  }, completion);
 }
 
-function clearBlacklist() {
-  runBlockedListMutation(function() {
-    blockedSites = [];
-    tabBlockingMap = {};
-    chrome.storage.local.set({blocked: blockedSites});
-  });
+function clearBlacklist(completion) {
+  runBlockedListMutation(function(done) {
+    persistBlockedSites([], function() {
+      tabBlockingMap = {};
+    }, done);
+  }, completion);
 }
 
 function getTabState(tabid) {
@@ -133,16 +184,22 @@ function handleBackgroundMessage(message, sender, sendResponse) {
   } else if (message.action === "background:addBlockedSite" &&
       isValidTabId(message.tabId) &&
       normalizeBlockedOrigin(message.blockedSite) !== "") {
-    addBlockedSite(message.tabId, message.blockedSite);
-    sendResponse({ok: true});
+    addBlockedSite(message.tabId, message.blockedSite, function(success) {
+      sendResponse({ok: success});
+    });
+    return true;
   } else if (message.action === "background:unlistSite" &&
       isValidTabId(message.tabId) &&
       normalizeBlockedOrigin(message.blockedSite) !== "") {
-    unlistSite(message.tabId, message.blockedSite);
-    sendResponse({ok: true});
+    unlistSite(message.tabId, message.blockedSite, function(success) {
+      sendResponse({ok: success});
+    });
+    return true;
   } else if (message.action === "background:clearBlacklist") {
-    clearBlacklist();
-    sendResponse({ok: true});
+    clearBlacklist(function(success) {
+      sendResponse({ok: success});
+    });
+    return true;
   }
 }
 

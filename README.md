@@ -113,6 +113,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   `blockedSite.html` URLs.
 - The background context owns block-list storage writes; the popup delegates new
   blocked origins instead of writing the same list twice.
+- Background block-list mutations are serialized and acknowledged only after
+  storage persistence succeeds.
 - Popup and blocked-site pages use validated same-extension runtime messages
   instead of direct access to the background page's global object.
 - The background add and unblock paths use centralized tab state writes so

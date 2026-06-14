@@ -7,9 +7,11 @@ function plain(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function createBackgroundHarness() {
+function createBackgroundHarness(options) {
+  options = options || {};
   const listeners = {};
   const storedValues = [];
+  const pendingStorageWrites = [];
   let storageGetCallback;
   const runtime = {
     id: "test-extension",
@@ -32,8 +34,16 @@ function createBackgroundHarness() {
           get(key, callback) {
             storageGetCallback = callback;
           },
-          set(value) {
+          set(value, callback) {
             storedValues.push(plain(value));
+            if (!callback) {
+              return;
+            }
+            if (options.deferStorageWrites) {
+              pendingStorageWrites.push(callback);
+            } else {
+              callback();
+            }
           }
         }
       },
@@ -76,10 +86,18 @@ function createBackgroundHarness() {
   return {
     context,
     listeners,
+    pendingStorageWrites,
     storedValues,
     finishStorageRead(items, error) {
       runtime.lastError = error || null;
       storageGetCallback(items);
+      runtime.lastError = null;
+    },
+    finishStorageWrite(error) {
+      assert.ok(pendingStorageWrites.length > 0, "expected a pending storage write");
+      const callback = pendingStorageWrites.shift();
+      runtime.lastError = error || null;
+      callback();
       runtime.lastError = null;
     }
   };
@@ -117,21 +135,119 @@ assert.deepStrictEqual(
   {cancel: true}
 );
 
-const queuedMutationHarness = createBackgroundHarness();
-queuedMutationHarness.context.addBlockedSite(5, "https://queued.test/path");
+const queuedMutationHarness = createBackgroundHarness({deferStorageWrites: true});
+let queuedMutationResult;
+queuedMutationHarness.context.addBlockedSite(5, "https://queued.test/path", function(success) {
+  queuedMutationResult = success;
+});
 assert.strictEqual(queuedMutationHarness.context.pendingBlockedListMutations.length, 1);
 assert.strictEqual(queuedMutationHarness.storedValues.length, 0);
 assert.strictEqual(queuedMutationHarness.context.getTabState(5), 0);
 queuedMutationHarness.finishStorageRead({blocked: ["https://existing.test"]});
+assert.strictEqual(queuedMutationHarness.context.blockedSitesReady, false);
+assert.strictEqual(queuedMutationHarness.pendingStorageWrites.length, 1);
+assert.strictEqual(queuedMutationResult, undefined);
+queuedMutationHarness.finishStorageWrite();
+assert.strictEqual(queuedMutationHarness.context.blockedSitesReady, true);
 assert.strictEqual(queuedMutationHarness.context.pendingBlockedListMutations.length, 0);
+assert.strictEqual(queuedMutationHarness.pendingStorageWrites.length, 1);
+assert.strictEqual(queuedMutationResult, undefined);
 assert.deepStrictEqual(plain(queuedMutationHarness.storedValues), [
   {blocked: ["https://existing.test"]},
   {blocked: ["https://existing.test", "https://queued.test"]}
 ]);
+queuedMutationHarness.finishStorageWrite();
+assert.strictEqual(queuedMutationResult, true);
 assert.strictEqual(
   queuedMutationHarness.context.getTabState(5),
   "https://queued.test"
 );
+
+const hydrationWriteFailureHarness = createBackgroundHarness({deferStorageWrites: true});
+let hydrationWriteFailureResponse;
+assert.strictEqual(hydrationWriteFailureHarness.listeners.onMessage({
+  action: "background:clearBlacklist"
+}, {
+  id: "test-extension",
+  url: "chrome-extension://test/popup.html"
+}, function(response) {
+  hydrationWriteFailureResponse = plain(response);
+}), true);
+hydrationWriteFailureHarness.finishStorageRead({blocked: ["https://example.com"]});
+assert.strictEqual(hydrationWriteFailureHarness.context.blockedSitesReady, false);
+assert.strictEqual(hydrationWriteFailureResponse, undefined);
+hydrationWriteFailureHarness.finishStorageWrite({message: "write unavailable"});
+assert.deepStrictEqual(hydrationWriteFailureResponse, {ok: false});
+assert.strictEqual(hydrationWriteFailureHarness.context.blockedSitesReady, false);
+assert.strictEqual(hydrationWriteFailureHarness.context.blockedSitesHydrationFailed, true);
+assert.deepStrictEqual(plain(hydrationWriteFailureHarness.context.blockedSites), []);
+
+const failedWriteHarness = createBackgroundHarness({deferStorageWrites: true});
+failedWriteHarness.finishStorageRead({blocked: []});
+failedWriteHarness.finishStorageWrite();
+let failedWriteResponse;
+assert.strictEqual(failedWriteHarness.listeners.onMessage({
+  action: "background:addBlockedSite",
+  tabId: 21,
+  blockedSite: "https://write-failure.test"
+}, {
+  id: "test-extension",
+  url: "chrome-extension://test/popup.html"
+}, function(response) {
+  failedWriteResponse = plain(response);
+}), true);
+assert.strictEqual(failedWriteResponse, undefined);
+failedWriteHarness.finishStorageWrite({message: "write unavailable"});
+assert.deepStrictEqual(failedWriteResponse, {ok: false});
+assert.deepStrictEqual(plain(failedWriteHarness.context.blockedSites), []);
+assert.strictEqual(failedWriteHarness.context.getTabState(21), 0);
+
+const hydrationMessageHarness = createBackgroundHarness({deferStorageWrites: true});
+let hydrationMessageResponse;
+assert.strictEqual(hydrationMessageHarness.listeners.onMessage({
+  action: "background:clearBlacklist"
+}, {
+  id: "test-extension",
+  url: "chrome-extension://test/popup.html"
+}, function(response) {
+  hydrationMessageResponse = plain(response);
+}), true);
+assert.strictEqual(hydrationMessageResponse, undefined);
+hydrationMessageHarness.finishStorageRead(
+  {blocked: ["https://example.com"]},
+  {message: "storage unavailable"}
+);
+assert.deepStrictEqual(hydrationMessageResponse, {ok: false});
+
+const serializedHarness = createBackgroundHarness({deferStorageWrites: true});
+serializedHarness.finishStorageRead({blocked: []});
+serializedHarness.finishStorageWrite();
+const serializedResponses = [];
+function sendSerializedAdd(tabId, blockedSite) {
+  assert.strictEqual(serializedHarness.listeners.onMessage({
+    action: "background:addBlockedSite",
+    tabId,
+    blockedSite
+  }, {
+    id: "test-extension",
+    url: "chrome-extension://test/popup.html"
+  }, function(response) {
+    serializedResponses.push(plain(response));
+  }), true);
+}
+sendSerializedAdd(31, "https://first.test");
+sendSerializedAdd(32, "https://second.test");
+assert.strictEqual(serializedHarness.pendingStorageWrites.length, 1);
+assert.strictEqual(serializedHarness.context.pendingBlockedListMutations.length, 1);
+serializedHarness.finishStorageWrite();
+assert.deepStrictEqual(serializedResponses, [{ok: true}]);
+assert.strictEqual(serializedHarness.pendingStorageWrites.length, 1);
+serializedHarness.finishStorageWrite();
+assert.deepStrictEqual(serializedResponses, [{ok: true}, {ok: true}]);
+assert.deepStrictEqual(plain(serializedHarness.context.blockedSites), [
+  "https://first.test",
+  "https://second.test"
+]);
 
 const harness = createBackgroundHarness();
 const {context, listeners, storedValues} = harness;

@@ -6,6 +6,7 @@ const vm = require("vm");
 const buttonState = {clicks: [], text: ""};
 const runtimeMessages = [];
 const tabMessages = [];
+let mutationResponse = {ok: true};
 
 function jquery(selector) {
   assert.strictEqual(selector, "#blacklistButton");
@@ -29,7 +30,7 @@ const context = {
         runtimeMessages.push(JSON.parse(JSON.stringify(message)));
         if (callback) {
           callback(message.action === "background:getTabState" ?
-            {ok: true, tabState: 0} : {ok: true});
+            {ok: true, tabState: 0} : mutationResponse);
         }
       }
     },
@@ -90,6 +91,18 @@ assert.deepStrictEqual(tabMessages, [
   }
 ]);
 
+tabMessages.length = 0;
+mutationResponse = {ok: false};
+buttonState.clicks[0]();
+assert.deepStrictEqual(runtimeMessages.shift(), {
+  action: "background:addBlockedSite",
+  tabId: 7,
+  blockedSite: "https://example.com"
+});
+assert.deepStrictEqual(tabMessages, [
+  {tabId: 7, message: {action: "geturl"}}
+]);
+
 context.tabState = "https://example.com";
 context.unlist();
 assert.deepStrictEqual(runtimeMessages.shift(), {
@@ -103,5 +116,13 @@ assert.deepStrictEqual(runtimeMessages.shift(), {
   action: "background:clearBlacklist"
 });
 assert.strictEqual(runtimeMessages.length, 0);
+assert.strictEqual(context.tabState, "https://example.com");
+
+mutationResponse = {ok: true};
+context.clearBlacklist();
+assert.deepStrictEqual(runtimeMessages.shift(), {
+  action: "background:clearBlacklist"
+});
+assert.strictEqual(context.tabState, 0);
 
 console.log("Popup runtime message boundary tests passed.");

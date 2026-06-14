@@ -28,8 +28,9 @@ STARTUP_HYDRATION_PLAN="$ROOT_DIR/docs/plans/2026-06-13-chrome-blocker-startup-h
 HYDRATION_MUTATION_PLAN="$ROOT_DIR/docs/plans/2026-06-13-chrome-blocker-hydration-mutations.md"
 RUNTIME_MESSAGE_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-runtime-message-boundary.md"
 POPUP_TEST="$ROOT_DIR/scripts/test-popup.js"
+MUTATION_ACK_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-mutation-acknowledgement.md"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$POPUP_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$POPUP_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -104,34 +105,35 @@ done
 
 for hydration_mutation_contract in \
   'var blockedSitesHydrationFailed = false;' \
-  'blockedSitesHydrationFailed = true;' \
+  'function failBlockedListHydration()' \
   'if (blockedSitesHydrationFailed)' \
   'var pendingBlockedListMutations = [];' \
-  'pendingBlockedListMutations.push(mutation);' \
+  'pendingBlockedListMutations.push({' \
   'pendingBlockedListMutations = [];' \
   'flushPendingBlockedListMutations();' \
-  'runBlockedListMutation(function() {'; do
+  'runBlockedListMutation(function(done) {'; do
   if ! grep -Fq "$hydration_mutation_contract" "$BACKGROUND"; then
     printf '%s\n' "Missing hydration-safe mutation contract: $hydration_mutation_contract" >&2
     exit 1
   fi
 done
 
-if [ "$(grep -Fc 'if (!blockedSitesReady)' "$BACKGROUND")" -ne 2 ]; then
-  printf '%s\n' "Background must guard both queued mutations and request enforcement during hydration." >&2
+if [ "$(grep -Fc 'if (!blockedSitesReady)' "$BACKGROUND")" -ne 1 ] || \
+   ! grep -Fq 'if (!blockedSitesReady || blockedListMutationInProgress ||' "$BACKGROUND"; then
+  printf '%s\n' "Background must guard both serialized mutations and request enforcement during hydration." >&2
   exit 1
 fi
 
 ready_line=$(grep -nF 'blockedSitesReady = true;' "$BACKGROUND" | cut -d: -f1)
-flush_line=$(grep -nF 'flushPendingBlockedListMutations();' "$BACKGROUND" | cut -d: -f1)
+flush_line=$(grep -nF 'flushPendingBlockedListMutations();' "$BACKGROUND" | head -n 1 | cut -d: -f1)
 if [ -z "$ready_line" ] || [ -z "$flush_line" ] || [ "$ready_line" -ge "$flush_line" ]; then
   printf '%s\n' "Loaded block-list state must become ready before queued mutations replay." >&2
   exit 1
 fi
 
 for hydration_mutation_test in \
-  'const queuedMutationHarness = createBackgroundHarness();' \
-  'queuedMutationHarness.context.addBlockedSite(5, "https://queued.test/path");' \
+  'const queuedMutationHarness = createBackgroundHarness({deferStorageWrites: true});' \
+  'queuedMutationHarness.context.addBlockedSite(5, "https://queued.test/path", function(success) {' \
   'assert.strictEqual(queuedMutationHarness.context.pendingBlockedListMutations.length, 1);' \
   '{blocked: ["https://existing.test", "https://queued.test"]}' \
   'assert.strictEqual(storageErrorHarness.context.pendingBlockedListMutations.length, 0);'; do
@@ -146,6 +148,67 @@ if ! grep -Fq 'assert.strictEqual(storageErrorHarness.context.blockedSitesHydrat
   printf '%s\n' "Failed hydration tests must reject post-error mutation retention." >&2
   exit 1
 fi
+
+for mutation_ack_source_contract in \
+  'var blockedListMutationInProgress = false;' \
+  'chrome.storage.local.set({blocked: hydratedBlockedSites}, function() {' \
+  'function persistBlockedSites(nextBlockedSites, commit, completion)' \
+  'blockedSites = nextBlockedSites;' \
+  'queuedMutation.completion(success);' \
+  'sendResponse({ok: success});'; do
+  if ! grep -Fq "$mutation_ack_source_contract" "$BACKGROUND"; then
+    printf '%s\n' "Missing persisted mutation acknowledgement contract: $mutation_ack_source_contract" >&2
+    exit 1
+  fi
+done
+
+if [ "$(grep -Fc 'return true;' "$BACKGROUND")" -ne 3 ]; then
+  printf '%s\n' "Each accepted asynchronous mutation message must retain its response channel." >&2
+  exit 1
+fi
+
+for mutation_ack_test_contract in \
+  'const hydrationWriteFailureHarness = createBackgroundHarness({deferStorageWrites: true});' \
+  'assert.deepStrictEqual(hydrationWriteFailureResponse, {ok: false});' \
+  'assert.deepStrictEqual(failedWriteResponse, {ok: false});' \
+  'assert.strictEqual(serializedHarness.pendingStorageWrites.length, 1);' \
+  'assert.deepStrictEqual(serializedResponses, [{ok: true}, {ok: true}]);'; do
+  if ! grep -Fq "$mutation_ack_test_contract" "$BACKGROUND_TEST"; then
+    printf '%s\n' "Missing persisted mutation acknowledgement regression: $mutation_ack_test_contract" >&2
+    exit 1
+  fi
+done
+
+for popup_ack_contract in \
+  'response.ok !== true' \
+  'chrome.tabs.sendMessage(tab.id, {action: "redirect", blockedSite: urlToBlock});' \
+  'tabState = 0;'; do
+  if ! grep -Fq "$popup_ack_contract" "$POPUP"; then
+    printf '%s\n' "Popup must proceed only after acknowledged mutation success: $popup_ack_contract" >&2
+    exit 1
+  fi
+done
+
+for mutation_ack_doc in "$README" "$ROOT_DIR/SECURITY.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! tr '\n' ' ' < "$mutation_ack_doc" | tr -s '[:space:]' ' ' | \
+      grep -Fq "Background block-list mutations are serialized and acknowledged only after storage persistence succeeds."; then
+    printf '%s\n' "$mutation_ack_doc must document persisted mutation acknowledgement." >&2
+    exit 1
+  fi
+done
+
+for mutation_ack_plan_contract in \
+  'Status: Completed' \
+  '## Verification: Completed' \
+  'Full `make check` passes' \
+  'Nine focused hostile mutations were rejected' \
+  'Two focused plan mutations were rejected' \
+  'no unpacked-extension browser execution is claimed'; do
+  if ! grep -Fq "$mutation_ack_plan_contract" "$MUTATION_ACK_PLAN"; then
+    printf '%s\n' "Mutation acknowledgement plan must record completed verification: $mutation_ack_plan_contract" >&2
+    exit 1
+  fi
+done
 
 for hydration_mutation_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md" \
   "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
@@ -318,10 +381,10 @@ if ! grep -Fq "function clearTabBlockingStatesForOrigin(blockedOrigin)" "$BACKGR
 fi
 
 if ! awk '
-  /function unlistSite\(tabid, site\)/ { in_unlist = 1 }
+  /function unlistSite\(tabid, site, completion\)/ { in_unlist = 1 }
   in_unlist && /if \(normalizedSite === ""\)/ { guard = NR }
-  in_unlist && /chrome.storage.local.set/ { write = NR }
-  /function clearBlacklist\(\)/ {
+  in_unlist && /persistBlockedSites/ { write = NR }
+  /function clearBlacklist\(completion\)/ {
     exit (guard && write && guard < write) ? 0 : 1
   }
   END { if (!in_unlist) exit 1 }
@@ -527,8 +590,9 @@ fi
 
 for startup_source_contract in \
   'var blockedSitesReady = false;' \
-  'if (chrome.runtime.lastError)' \
-  'blockedSites = normalizeBlockedList(items && items.blocked);' \
+  'var hydratedBlockedSites = normalizeBlockedList(items && items.blocked);' \
+  'chrome.storage.local.set({blocked: hydratedBlockedSites}, function() {' \
+  'blockedSites = hydratedBlockedSites;' \
   'return {cancel: true};' \
   'blockedSitesReady = true;'; do
   if [ "$(grep -Fc "$startup_source_contract" "$BACKGROUND")" -ne 1 ]; then
@@ -539,17 +603,19 @@ done
 
 storage_initial_line=$(grep -nF 'var blockedSitesReady = false;' "$BACKGROUND" | cut -d: -f1)
 storage_get_line=$(grep -nF 'chrome.storage.local.get("blocked", function(items)' "$BACKGROUND" | cut -d: -f1)
-storage_error_line=$(grep -nF 'if (chrome.runtime.lastError)' "$BACKGROUND" | cut -d: -f1)
-storage_normalize_line=$(grep -nF 'blockedSites = normalizeBlockedList(items && items.blocked);' "$BACKGROUND" | cut -d: -f1)
-storage_set_line=$(grep -nF 'chrome.storage.local.set({blocked: blockedSites});' "$BACKGROUND" | head -n 1 | cut -d: -f1)
+storage_read_error_line=$(grep -nF 'if (chrome.runtime.lastError)' "$BACKGROUND" | head -n 1 | cut -d: -f1)
+storage_normalize_line=$(grep -nF 'var hydratedBlockedSites = normalizeBlockedList(items && items.blocked);' "$BACKGROUND" | cut -d: -f1)
+storage_set_line=$(grep -nF 'chrome.storage.local.set({blocked: hydratedBlockedSites}, function() {' "$BACKGROUND" | cut -d: -f1)
+storage_write_error_line=$(grep -nF 'if (chrome.runtime.lastError)' "$BACKGROUND" | sed -n '2p' | cut -d: -f1)
+storage_publish_line=$(grep -nF 'blockedSites = hydratedBlockedSites;' "$BACKGROUND" | cut -d: -f1)
 storage_ready_line=$(grep -nF 'blockedSitesReady = true;' "$BACKGROUND" | cut -d: -f1)
 request_ready_guard_line=$(grep -nF 'if (!blockedSitesReady)' "$BACKGROUND" | tail -n 1 | cut -d: -f1)
 request_cancel_line=$(grep -nF 'return {cancel: true};' "$BACKGROUND" | cut -d: -f1)
 request_match_line=$(grep -nF 'var tabBlockingState = findBlockedSite(request.url);' "$BACKGROUND" | cut -d: -f1)
 request_shape_line=$(grep -nF 'if (!request || request.type !== "main_frame" || !request.url ||' "$BACKGROUND" | cut -d: -f1)
 
-for startup_line in "$storage_initial_line" "$storage_get_line" "$storage_error_line" "$storage_normalize_line" \
-  "$storage_set_line" "$storage_ready_line" "$request_ready_guard_line" \
+for startup_line in "$storage_initial_line" "$storage_get_line" "$storage_read_error_line" "$storage_normalize_line" \
+  "$storage_set_line" "$storage_write_error_line" "$storage_publish_line" "$storage_ready_line" "$request_ready_guard_line" \
   "$request_cancel_line" "$request_match_line" "$request_shape_line"; do
   if [ -z "$startup_line" ]; then
     printf '%s\n' "Startup hydration ordering markers must remain present." >&2
@@ -558,10 +624,12 @@ for startup_line in "$storage_initial_line" "$storage_get_line" "$storage_error_
 done
 
 if [ "$storage_initial_line" -ge "$storage_get_line" ] || \
-   [ "$storage_get_line" -ge "$storage_error_line" ] || \
-   [ "$storage_error_line" -ge "$storage_normalize_line" ] || \
+   [ "$storage_get_line" -ge "$storage_read_error_line" ] || \
+   [ "$storage_read_error_line" -ge "$storage_normalize_line" ] || \
    [ "$storage_normalize_line" -ge "$storage_set_line" ] || \
-   [ "$storage_set_line" -ge "$storage_ready_line" ] || \
+   [ "$storage_set_line" -ge "$storage_write_error_line" ] || \
+   [ "$storage_write_error_line" -ge "$storage_publish_line" ] || \
+   [ "$storage_publish_line" -ge "$storage_ready_line" ] || \
    [ "$request_shape_line" -ge "$request_ready_guard_line" ] || \
    [ "$request_ready_guard_line" -ge "$request_cancel_line" ] || \
    [ "$request_cancel_line" -ge "$request_match_line" ]; then
@@ -570,7 +638,7 @@ if [ "$storage_initial_line" -ge "$storage_get_line" ] || \
 fi
 
 for startup_test_contract in \
-  'function createBackgroundHarness()' \
+  'function createBackgroundHarness(options)' \
   'const storageErrorHarness = createBackgroundHarness();' \
   '{message: "storage unavailable"}' \
   'assert.strictEqual(storageErrorHarness.context.blockedSitesReady, false);' \

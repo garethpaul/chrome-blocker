@@ -6,6 +6,8 @@
   same-extension runtime messages for state reads and block-list mutations.
 - Added executable popup coverage and required acknowledged background unlist
   mutations before the blocked page returns to the original site.
+- Background block-list mutations are serialized and acknowledged only after
+  storage persistence succeeds.
 
 ## 2026-06-13
 

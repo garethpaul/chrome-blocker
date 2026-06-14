@@ -46,6 +46,8 @@ Helpful reports include:
 - Background state mutations accept only validated same-extension runtime
   messages with action-specific tab and origin checks; extension pages do not
   access the background global object directly.
+- Background block-list mutations are serialized and acknowledged only after
+  storage persistence succeeds.
 
 ## Service and API Notes
 
