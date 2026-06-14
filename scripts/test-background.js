@@ -346,6 +346,19 @@ assert.strictEqual(
     blockedSite: "https://invalid.test"}),
   undefined
 );
+assert.strictEqual(
+  sendBackgroundMessage({action: "background:addBlockedSite", tabId: 1.5,
+    blockedSite: "https://fractional.test"}),
+  undefined
+);
+assert.strictEqual(
+  sendBackgroundMessage({action: "background:getTabState", tabId: Infinity}),
+  undefined
+);
+context.setTabBlockingState(2.5, "https://fractional.test");
+context.setTabBlockingState(Infinity, "https://infinite.test");
+assert.strictEqual(context.getTabState(2.5), 0);
+assert.strictEqual(context.getTabState(Infinity), 0);
 assert.deepStrictEqual(
   sendBackgroundMessage({action: "background:addBlockedSite", tabId: 14,
     blockedSite: "https://message.test/path"}),

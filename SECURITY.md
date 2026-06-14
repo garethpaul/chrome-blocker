@@ -48,6 +48,7 @@ Helpful reports include:
   access the background global object directly.
 - Background block-list mutations are serialized and acknowledged only after
   storage persistence succeeds.
+- Chrome Blocker accepts only finite integer tab IDs at runtime boundaries.
 
 ## Service and API Notes
 

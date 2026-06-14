@@ -29,8 +29,9 @@ HYDRATION_MUTATION_PLAN="$ROOT_DIR/docs/plans/2026-06-13-chrome-blocker-hydratio
 RUNTIME_MESSAGE_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-runtime-message-boundary.md"
 POPUP_TEST="$ROOT_DIR/scripts/test-popup.js"
 MUTATION_ACK_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-mutation-acknowledgement.md"
+INTEGER_TAB_ID_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-integer-tab-ids.md"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$POPUP_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$POPUP_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -356,6 +357,30 @@ if ! grep -Fq "function isValidTabId(tabid)" "$BACKGROUND"; then
   printf '%s\n' "Background state must centralize valid tab id checks." >&2
   exit 1
 fi
+for integer_tab_contract in \
+  'isFinite(tabid)' \
+  'Math.floor(tabid) === tabid' \
+  'tabId: 1.5' \
+  'tabId: Infinity' \
+  'context.setTabBlockingState(2.5' \
+  'context.setTabBlockingState(Infinity'; do
+  if ! grep -Fq "$integer_tab_contract" "$BACKGROUND" "$BACKGROUND_TEST"; then
+    printf '%s\n' "Finite integer tab-id contract is missing: $integer_tab_contract" >&2
+    exit 1
+  fi
+done
+for integer_doc in AGENTS.md README.md SECURITY.md VISION.md CHANGES.md; do
+  if ! grep -Fq "Chrome Blocker accepts only finite integer tab IDs at runtime boundaries." "$ROOT_DIR/$integer_doc"; then
+    printf '%s\n' "$integer_doc must document finite integer tab IDs." >&2
+    exit 1
+  fi
+done
+for integer_plan_contract in "Status: Completed" "make check" "hostile mutations"; do
+  if ! grep -Fq "$integer_plan_contract" "$INTEGER_TAB_ID_PLAN"; then
+    printf '%s\n' "Integer tab-id plan must record completed verification: $integer_plan_contract" >&2
+    exit 1
+  fi
+done
 
 if ! grep -Fq '!isValidTabId(request.tabId)' "$BACKGROUND"; then
   printf '%s\n' "Background interception must ignore requests that are not associated with a browser tab." >&2

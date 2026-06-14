@@ -52,6 +52,7 @@
 - Startup hydration must replay queued block-list mutations only after the loaded
   snapshot is installed, and must drop the queue on storage failure.
 - The background add and unblock paths use centralized tab state writes so invalid tab ids cannot create stray per-tab entries.
+- Chrome Blocker accepts only finite integer tab IDs at runtime boundaries.
 
 ## Agent workflow
 

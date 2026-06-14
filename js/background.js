@@ -142,7 +142,8 @@ function findBlockedSite(requestUrl) {
 }
 
 function isValidTabId(tabid) {
-  return typeof tabid === "number" && tabid >= 0;
+  return typeof tabid === "number" && isFinite(tabid) &&
+      Math.floor(tabid) === tabid && tabid >= 0;
 }
 
 function setTabBlockingState(tabid, tabBlockingState) {

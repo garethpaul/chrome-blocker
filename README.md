@@ -119,6 +119,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
   instead of direct access to the background page's global object.
 - The background add and unblock paths use centralized tab state writes so
   invalid tab ids cannot create stray per-tab entries.
+- Chrome Blocker accepts only finite integer tab IDs at runtime boundaries.
 - Background navigation, replacement, and removal paths use centralized tab state helpers,
   with executable Node coverage for state initialization, transfer, and cleanup.
 - A global unlisting clears matching state across every tracked tab while
