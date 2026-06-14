@@ -32,6 +32,7 @@ Priority:
 - Reject credential-bearing blocker URLs before storing or matching rules
 - Make host, tab, storage, webRequest, and navigation permissions explicit
 - Keep GitHub Actions aligned with the local Node `make check` baseline
+- Keep non-persisted checkout credentials in hosted verification
 - Avoid adding tracking or remote configuration
 
 Next priorities:

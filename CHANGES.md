@@ -2,6 +2,8 @@
 
 ## 2026-06-12
 
+- Disabled checkout credential persistence in the canonical Node matrix and
+  added exact action, permission, and command contracts.
 - Routed committed-navigation and tab-replacement state changes through the
   centralized valid-tab helpers.
 - Expanded the real background-script VM test to cover state initialization,

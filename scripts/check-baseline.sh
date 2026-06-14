@@ -20,8 +20,9 @@ CI_WORKFLOW="$ROOT_DIR/.github/workflows/check.yml"
 NON_TAB_REQUEST_PLAN="$ROOT_DIR/docs/plans/2026-06-10-chrome-blocker-non-tab-request-guard.md"
 BACKGROUND_TEST="$ROOT_DIR/scripts/test-background.js"
 TAB_LIFECYCLE_PLAN="$ROOT_DIR/docs/plans/2026-06-12-chrome-blocker-tab-lifecycle-helper-coverage.md"
+CHECKOUT_CREDENTIAL_PLAN="$ROOT_DIR/docs/plans/2026-06-12-checkout-credential-boundary.md"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -30,6 +31,14 @@ done
 
 if [ ! -f "$ROOT_DIR/docs/plans/2026-06-09-chrome-blocker-tab-state-cleanup.md" ]; then
   printf '%s\n' "Chrome blocker tab state cleanup plan is missing." >&2
+  exit 1
+fi
+
+if [ "$(grep -Fc 'uses: actions/checkout@' "$CI_WORKFLOW")" -ne 1 ] || \
+   [ "$(grep -Fc 'persist-credentials: false' "$CI_WORKFLOW")" -ne 1 ] || \
+   [ "$(grep -Fc 'uses: actions/setup-node@' "$CI_WORKFLOW")" -ne 1 ] || \
+   grep -E '^[[:space:]]*(-[[:space:]]+)?uses:' "$CI_WORKFLOW" | grep -Ev '@[0-9a-f]{40}([[:space:]]+#.*)?$' >/dev/null; then
+  printf '%s\n' "Workflow actions must be unique, immutable, and checkout credentials must not persist." >&2
   exit 1
 fi
 
@@ -68,6 +77,30 @@ fi
 
 if ! grep -Fq "runs-on: ubuntu-24.04" "$CI_WORKFLOW" || ! grep -Fq "cancel-in-progress: true" "$CI_WORKFLOW"; then
   printf '%s\n' "GitHub Actions must use a stable runner and cancel superseded checks." >&2
+  exit 1
+fi
+
+if [ "$(grep -Ec '^[[:space:]]*permissions:' "$CI_WORKFLOW")" -ne 1 ] || \
+   [ "$(grep -Ec '^[[:space:]]+contents:[[:space:]]*read[[:space:]]*$' "$CI_WORKFLOW")" -ne 1 ] || \
+   grep -Eq 'write-all|:[[:space:]]*write|continue-on-error:[[:space:]]*true|if:[[:space:]]*false' "$CI_WORKFLOW" || \
+   [ "$(grep -Ec '^[[:space:]]*(-[[:space:]]+)?run:' "$CI_WORKFLOW")" -ne 1 ]; then
+  printf '%s\n' "Check workflow must keep exact read-only permissions and one required command." >&2
+  exit 1
+fi
+
+if ! grep -Fq "status: completed" "$CHECKOUT_CREDENTIAL_PLAN" || \
+   ! grep -Fq "make check" "$CHECKOUT_CREDENTIAL_PLAN" || \
+   ! grep -Fq "external working directory" "$CHECKOUT_CREDENTIAL_PLAN" || \
+   ! grep -Fq "hostile mutations rejected" "$CHECKOUT_CREDENTIAL_PLAN"; then
+  printf '%s\n' "Checkout credential plan must record completed local verification." >&2
+  exit 1
+fi
+
+if ! grep -Fq "does not persist checkout credentials" "$README" || \
+   ! grep -Fq "non-persisted checkout token" "$ROOT_DIR/SECURITY.md" || \
+   ! grep -Fq "non-persisted checkout credentials" "$ROOT_DIR/VISION.md" || \
+   ! grep -Fq "checkout credential persistence" "$ROOT_DIR/CHANGES.md"; then
+  printf '%s\n' "Repository guidance must document the checkout credential boundary." >&2
   exit 1
 fi
 
