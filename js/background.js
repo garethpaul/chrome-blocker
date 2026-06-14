@@ -115,6 +115,37 @@ function clearTabBlockingStatesForOrigin(blockedOrigin) {
   }
 }
 
+function isTrustedExtensionSender(sender) {
+  return sender && sender.id === chrome.runtime.id &&
+      typeof sender.url === "string" &&
+      sender.url.indexOf(chrome.runtime.getURL("")) === 0;
+}
+
+function handleBackgroundMessage(message, sender, sendResponse) {
+  if (!isTrustedExtensionSender(sender) || !message ||
+      typeof message !== "object") {
+    return;
+  }
+
+  if (message.action === "background:getTabState" &&
+      isValidTabId(message.tabId)) {
+    sendResponse({ok: true, tabState: getTabState(message.tabId)});
+  } else if (message.action === "background:addBlockedSite" &&
+      isValidTabId(message.tabId) &&
+      normalizeBlockedOrigin(message.blockedSite) !== "") {
+    addBlockedSite(message.tabId, message.blockedSite);
+    sendResponse({ok: true});
+  } else if (message.action === "background:unlistSite" &&
+      isValidTabId(message.tabId) &&
+      normalizeBlockedOrigin(message.blockedSite) !== "") {
+    unlistSite(message.tabId, message.blockedSite);
+    sendResponse({ok: true});
+  } else if (message.action === "background:clearBlacklist") {
+    clearBlacklist();
+    sendResponse({ok: true});
+  }
+}
+
 function requestChecker(request) {
   if (!request || request.type !== "main_frame" || !request.url ||
       !isValidTabId(request.tabId)) {
@@ -160,3 +191,4 @@ function updateReplacedTabMapping(details) {
 chrome.tabs.onRemoved.addListener(removeTabBlockingState);
 chrome.webNavigation.onTabReplaced.addListener(updateReplacedTabMapping);
 chrome.webNavigation.onCommitted.addListener(updateMapping);
+chrome.runtime.onMessage.addListener(handleBackgroundMessage);

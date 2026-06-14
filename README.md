@@ -59,6 +59,7 @@ scripts/check-baseline.sh
 node scripts/test-url-rules.js
 node scripts/test-background.js
 node scripts/test-blocked-site.js
+node scripts/test-popup.js
 ```
 
 The URL-rule baseline verifies normalized HTTP(S) origin matching, rejected
@@ -71,6 +72,9 @@ subframes, blocked redirects, allowed navigation, and tab state updates.
 The blocked-page behavior test executes the real runtime listener with mocked
 Chrome and DOM APIs and covers rejected unlist messages plus the accepted
 same-tab, same-origin request.
+The popup behavior test executes the real popup script with mocked Chrome and
+DOM APIs and covers background state lookup, add, clear, unlist, and redirect
+messages.
 GitHub Actions runs `make check` on Node 20, 22, and 24 for pushes, pull
 requests, and manual dispatches. The workflow uses commit-pinned actions,
 read-only repository access, and a bounded runtime.
@@ -107,8 +111,10 @@ When the required SDK or runtime is unavailable, use static checks and source re
   navigation remains fail closed.
 - The content-script redirect messages are normalized before constructing
   `blockedSite.html` URLs.
-- The background page owns block-list storage writes; the popup delegates new
+- The background context owns block-list storage writes; the popup delegates new
   blocked origins instead of writing the same list twice.
+- Popup and blocked-site pages use validated same-extension runtime messages
+  instead of direct access to the background page's global object.
 - The background add and unblock paths use centralized tab state writes so
   invalid tab ids cannot create stray per-tab entries.
 - Background navigation, replacement, and removal paths use centralized tab state helpers,
@@ -157,7 +163,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - See `docs/plans/2026-06-13-chrome-blocker-startup-hydration-gate.md` for the
   fail-closed background startup boundary.
 - A Manifest V3 migration remains separate work because it requires replacing
-  blocking `webRequest` behavior and persistent background-page calls, not just
+  blocking `webRequest` behavior and the persistent background lifecycle, not just
   changing the manifest version.
 
 ## Contributing

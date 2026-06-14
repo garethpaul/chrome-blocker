@@ -46,7 +46,9 @@
 - Popup-to-blocked-page unlist requests are typed and must match both the current numeric tab id and normalized blocked origin.
 - Background tab blocking state is removed when tabs close and ignores invalid non-tab navigation ids.
 - The content-script redirect messages are normalized before constructing `blockedSite.html` URLs.
-- The background page owns block-list storage writes; the popup delegates new blocked origins instead of writing the same list twice.
+- The background context owns block-list storage writes; popup and blocked-site
+  pages use validated same-extension runtime messages instead of direct global
+  object access.
 - Startup hydration must replay queued block-list mutations only after the loaded
   snapshot is installed, and must drop the queue on storage failure.
 - The background add and unblock paths use centralized tab state writes so invalid tab ids cannot create stray per-tab entries.

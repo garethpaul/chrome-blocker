@@ -43,6 +43,9 @@ Helpful reports include:
 - Successful hydration must replay queued block-list mutations after the trusted
   snapshot is installed; storage failure drops queued actions rather than
   applying them to unknown state.
+- Background state mutations accept only validated same-extension runtime
+  messages with action-specific tab and origin checks; extension pages do not
+  access the background global object directly.
 
 ## Service and API Notes
 

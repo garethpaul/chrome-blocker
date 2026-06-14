@@ -1,5 +1,12 @@
 # Chrome Blocker Changes
 
+## 2026-06-14
+
+- Replaced popup and blocked-page `getBackgroundPage()` calls with validated
+  same-extension runtime messages for state reads and block-list mutations.
+- Added executable popup coverage and required acknowledged background unlist
+  mutations before the blocked page returns to the original site.
+
 ## 2026-06-13
 
 - Updated successful startup hydration to replay queued block-list mutations,

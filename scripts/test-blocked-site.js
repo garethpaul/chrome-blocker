@@ -7,6 +7,8 @@ const elementState = {};
 let messageListener;
 let intervalStarts = 0;
 let intervalClears = 0;
+const sentMessages = [];
+let messageResponse = {ok: false};
 
 function element(selector) {
   if (!elementState[selector]) {
@@ -41,16 +43,16 @@ function element(selector) {
 const context = {
   URL,
   chrome: {
-    extension: {
-      getBackgroundPage() {
-        throw new Error("Countdown completion is outside this message-boundary test.");
-      }
-    },
     runtime: {
+      lastError: null,
       onMessage: {
         addListener(listener) {
           messageListener = listener;
         }
+      },
+      sendMessage(message, callback) {
+        sentMessages.push(JSON.parse(JSON.stringify(message)));
+        callback(messageResponse);
       }
     },
     tabs: {
@@ -133,5 +135,23 @@ messageListener({
 assert.deepStrictEqual(elementState["#unlistModal"].modals, ["show", "show"]);
 assert.strictEqual(intervalStarts, 2);
 assert.strictEqual(intervalClears, 1);
+
+context.i = 1;
+context.updateCountdown();
+assert.strictEqual(context.window.location.href, "");
+
+messageResponse = {ok: true};
+context.i = 1;
+context.updateCountdown();
+assert.deepStrictEqual(sentMessages, [{
+  action: "background:unlistSite",
+  tabId: 7,
+  blockedSite: "https://example.com"
+}, {
+  action: "background:unlistSite",
+  tabId: 7,
+  blockedSite: "https://example.com"
+}]);
+assert.strictEqual(context.window.location.href, "https://example.com");
 
 console.log("Blocked-page unlist message contract tests passed.");

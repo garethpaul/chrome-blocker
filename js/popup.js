@@ -13,7 +13,7 @@ function getCurrentTab(callback) {
 }
 
 function clearBlacklist() {
-  chrome.extension.getBackgroundPage().clearBlacklist();
+  chrome.runtime.sendMessage({action: "background:clearBlacklist"});
 }
 
 function unlist() {
@@ -47,7 +47,11 @@ function blacklistSite() {
         }
 
         if (blockedSites.indexOf(urlToBlock) === -1) {
-          chrome.extension.getBackgroundPage().addBlockedSite(tab.id, urlToBlock);
+          chrome.runtime.sendMessage({
+            action: "background:addBlockedSite",
+            tabId: tab.id,
+            blockedSite: urlToBlock
+          });
         }
         chrome.tabs.sendMessage(tab.id, {action: "redirect", blockedSite: urlToBlock});
       });
@@ -58,14 +62,23 @@ function blacklistSite() {
 var triggered = 0;
 if (triggered ++ == 0) {
   getCurrentTab(function(tab) {
-    tabState = chrome.extension.getBackgroundPage().getTabState(tab.id);
-    var button = $("#blacklistButton");
-    if (tabState == 0) {
-      button.click(blacklistSite);
-      button.text("Blacklist site");
-    } else {
-      button.click(unlist);
-      button.text("Remove " + tabState + " from the Blacklist");
-    }
+    chrome.runtime.sendMessage({
+      action: "background:getTabState",
+      tabId: tab.id
+    }, function(response) {
+      if (chrome.runtime.lastError || !response || response.ok !== true) {
+        return;
+      }
+
+      tabState = response.tabState;
+      var button = $("#blacklistButton");
+      if (tabState == 0) {
+        button.click(blacklistSite);
+        button.text("Blacklist site");
+      } else {
+        button.click(unlist);
+        button.text("Remove " + tabState + " from the Blacklist");
+      }
+    });
   });    
 }

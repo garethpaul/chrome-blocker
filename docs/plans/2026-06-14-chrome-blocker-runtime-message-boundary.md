@@ -1,6 +1,6 @@
 # Decouple Extension Pages From the Background Page
 
-Status: In Progress
+Status: Completed
 
 ## Context
 
@@ -64,12 +64,28 @@ background-page calls.
 
 ## Verification
 
-Verification: Pending
+Verification: Completed
 
-- Run the real-script Node behavior suites and full `make check`.
-- Run syntax, whitespace, diff, generated-artifact, and secret audits.
-- Run focused hostile mutations against message validation and the direct-call
-  prohibition.
+- The real-script URL-rule, background, blocked-page, and popup Node suites
+  pass.
+- Full `make check` passes the source contracts and all four behavior suites.
+- JavaScript and shell syntax, whitespace, exact-diff, generated-artifact, and
+  credential-shaped addition audits pass.
+- Nine focused hostile mutations alter sender-id or sender-URL validation,
+  listener registration, direct background access, acknowledged unlisting,
+  popup test wiring, popup action naming, rejected-sender evidence, or the
+  background unlist action; every mutation is rejected.
+
+## Work Completed
+
+- Added one same-extension, extension-page-only runtime message boundary for
+  tab-state reads and block-list mutations.
+- Migrated popup add, clear, and state-read operations away from direct
+  background global access.
+- Required the blocked page to receive a successful unlist acknowledgement
+  before returning to the original site.
+- Added executable popup coverage and expanded background and blocked-page
+  regressions for accepted and rejected messages.
 
 ## Scope Boundaries
 
@@ -79,3 +95,5 @@ Verification: Pending
   migrated to `declarativeNetRequest` and service-worker lifecycle behavior is
   tested.
 - Do not weaken fail-closed startup behavior or URL-origin normalization.
+
+This change claims no unpacked-extension browser execution.

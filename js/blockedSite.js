@@ -28,8 +28,15 @@ function updateCountdown() {
   if (i == 0) {
     clearInterval(interval);
     withCurrentTab(function(tab) {
-      chrome.extension.getBackgroundPage().unlistSite(tab.id, site);
-      window.location.href = site;
+      chrome.runtime.sendMessage({
+        action: "background:unlistSite",
+        tabId: tab.id,
+        blockedSite: site
+      }, function(response) {
+        if (!chrome.runtime.lastError && response && response.ok === true) {
+          window.location.href = site;
+        }
+      });
     });
   }
 }

@@ -26,10 +26,78 @@ UNLIST_MESSAGE_PLAN="$ROOT_DIR/docs/plans/2026-06-13-chrome-blocker-unlist-messa
 BLOCKED_SITE_TEST="$ROOT_DIR/scripts/test-blocked-site.js"
 STARTUP_HYDRATION_PLAN="$ROOT_DIR/docs/plans/2026-06-13-chrome-blocker-startup-hydration-gate.md"
 HYDRATION_MUTATION_PLAN="$ROOT_DIR/docs/plans/2026-06-13-chrome-blocker-hydration-mutations.md"
+RUNTIME_MESSAGE_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-runtime-message-boundary.md"
+POPUP_TEST="$ROOT_DIR/scripts/test-popup.js"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$POPUP_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
+    exit 1
+  fi
+done
+
+if grep -n 'chrome\.extension\.getBackgroundPage(' "$BACKGROUND" "$POPUP" "$BLOCKED_SITE" >/dev/null; then
+  printf '%s\n' "Extension pages must not access the background global object directly." >&2
+  exit 1
+fi
+
+for message_contract in \
+  'function isTrustedExtensionSender(sender)' \
+  'sender.id === chrome.runtime.id' \
+  'sender.url.indexOf(chrome.runtime.getURL("")) === 0' \
+  'function handleBackgroundMessage(message, sender, sendResponse)' \
+  'chrome.runtime.onMessage.addListener(handleBackgroundMessage);' \
+  'message.action === "background:getTabState"' \
+  'message.action === "background:addBlockedSite"' \
+  'message.action === "background:unlistSite"' \
+  'message.action === "background:clearBlacklist"'; do
+  if ! grep -Fq "$message_contract" "$BACKGROUND"; then
+    printf '%s\n' "Missing validated background message contract: $message_contract" >&2
+    exit 1
+  fi
+done
+
+for caller_contract in \
+  'action: "background:getTabState"' \
+  'action: "background:addBlockedSite"' \
+  'action: "background:clearBlacklist"'; do
+  if ! grep -Fq "$caller_contract" "$POPUP"; then
+    printf '%s\n' "Popup must use runtime message contract: $caller_contract" >&2
+    exit 1
+  fi
+done
+
+if ! grep -Fq 'action: "background:unlistSite"' "$BLOCKED_SITE" || \
+   ! grep -Fq 'response.ok === true' "$BLOCKED_SITE"; then
+  printf '%s\n' "Blocked page must wait for acknowledged runtime unlist messages." >&2
+  exit 1
+fi
+
+for message_test_contract in \
+  'sendBackgroundMessage({action: "background:getTabState", tabId: 7}, "other-extension")' \
+  '"https://example.com/"' \
+  'sendBackgroundMessage({action: "background:addBlockedSite", tabId: -2,' \
+  'sendBackgroundMessage({action: "background:unlistSite", tabId: 14,'; do
+  if ! grep -Fq "$message_test_contract" "$BACKGROUND_TEST"; then
+    printf '%s\n' "Background test must exercise rejected runtime message: $message_test_contract" >&2
+    exit 1
+  fi
+done
+
+if ! grep -Fq 'Popup runtime message boundary tests passed.' "$POPUP_TEST" || \
+   ! grep -Fq '$(NODE) $(ROOT)scripts/test-popup.js' "$ROOT_DIR/Makefile"; then
+  printf '%s\n' "Popup runtime behavior test must remain in the repository gate." >&2
+  exit 1
+fi
+
+for runtime_message_plan_contract in \
+  'Status: Completed' \
+  'Verification: Completed' \
+  'Full `make check` passes' \
+  'Nine focused hostile mutations' \
+  'no unpacked-extension browser execution'; do
+  if ! grep -Fq "$runtime_message_plan_contract" "$RUNTIME_MESSAGE_PLAN"; then
+    printf '%s\n' "Runtime message plan must record completed verification: $runtime_message_plan_contract" >&2
     exit 1
   fi
 done
@@ -289,8 +357,9 @@ if ! grep -Fq "normalizeBlockedOrigin(response.URL)" "$POPUP"; then
   exit 1
 fi
 
-if ! grep -Fq "chrome.extension.getBackgroundPage().addBlockedSite(tab.id, urlToBlock)" "$POPUP"; then
-  printf '%s\n' "Popup must delegate block-list persistence to the background page." >&2
+if ! grep -Fq 'action: "background:addBlockedSite"' "$POPUP" || \
+   ! grep -Fq 'blockedSite: urlToBlock' "$POPUP"; then
+  printf '%s\n' "Popup must delegate block-list persistence through the background message boundary." >&2
   exit 1
 fi
 
@@ -371,16 +440,16 @@ if [ "$(grep -F "window.location.href = site;" "$BLOCKED_SITE" | wc -l | tr -d '
 fi
 
 if ! awk '
-  /withCurrentTab\(function\(tab\)/ { in_tab = 1; saw_unlist = 0; saw_redirect = 0 }
-  in_tab && /unlistSite\(tab.id, site\)/ { saw_unlist = 1 }
-  in_tab && /window.location.href = site;/ { saw_redirect = 1 }
-  in_tab && /\}\);/ {
-    if (saw_unlist && saw_redirect) {
-      found = 1
-    }
-    in_tab = 0
+  /function updateCountdown\(\)/ { in_countdown = 1 }
+  in_countdown && /withCurrentTab\(function\(tab\)/ { guarded = NR }
+  in_countdown && /action: "background:unlistSite"/ { message = NR }
+  in_countdown && /response.ok === true/ { acknowledged = NR }
+  in_countdown && /window.location.href = site;/ { redirect = NR }
+  /function clearCountdownTimer\(\)/ {
+    exit (guarded && message && acknowledged && redirect &&
+      guarded < message && message < acknowledged && acknowledged < redirect) ? 0 : 1
   }
-  END { exit found ? 0 : 1 }
+  END { if (!in_countdown) exit 1 }
 ' "$BLOCKED_SITE"; then
   printf '%s\n' "Blocked page redirect must run inside the guarded current-tab unlist callback." >&2
   exit 1
@@ -594,7 +663,7 @@ if ! grep -Fq "content-script redirect messages are normalized" "$README"; then
   exit 1
 fi
 
-if ! grep -Fq "background page owns block-list storage writes" "$README"; then
+if ! grep -Fq "background context owns block-list storage writes" "$README"; then
   printf '%s\n' "README must document background-owned block-list persistence." >&2
   exit 1
 fi

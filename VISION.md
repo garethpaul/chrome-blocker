@@ -18,6 +18,8 @@ The current focus is:
 Priority:
 
 - Preserve the popup-to-background flow for adding and removing blocked sites
+- Keep popup and blocked-site background operations behind validated runtime
+  message contracts
 - Keep the block list local to the browser
 - Keep block-list persistence owned by background extension state
 - Keep per-tab blocking state scoped to live browser tabs

@@ -12,9 +12,15 @@ function createBackgroundHarness() {
   const storedValues = [];
   let storageGetCallback;
   const runtime = {
+    id: "test-extension",
     lastError: null,
     getURL(resourcePath) {
       return "chrome-extension://test/" + resourcePath;
+    },
+    onMessage: {
+      addListener(listener) {
+        listeners.onMessage = listener;
+      }
     }
   };
   const context = {
@@ -130,6 +136,7 @@ assert.strictEqual(
 const harness = createBackgroundHarness();
 const {context, listeners, storedValues} = harness;
 assert.strictEqual(typeof listeners.onBeforeRequest, "function");
+assert.strictEqual(typeof listeners.onMessage, "function");
 assert.strictEqual(typeof context.clearTabBlockingStatesForOrigin, "function");
 assert.strictEqual(context.blockedSitesReady, false);
 assert.strictEqual(storedValues.length, 0);
@@ -191,6 +198,57 @@ assert.strictEqual(
 );
 assert.strictEqual(context.getTabState(6), 0);
 
+function sendBackgroundMessage(message, senderId, senderUrl) {
+  let response;
+  listeners.onMessage(message, {
+    id: senderId || "test-extension",
+    url: senderUrl || "chrome-extension://test/popup.html"
+  }, function(value) {
+    response = plain(value);
+  });
+  return response;
+}
+
+assert.strictEqual(
+  sendBackgroundMessage({action: "background:getTabState", tabId: 7}, "other-extension"),
+  undefined
+);
+assert.strictEqual(
+  sendBackgroundMessage(
+    {action: "background:getTabState", tabId: 7},
+    "test-extension",
+    "https://example.com/"
+  ),
+  undefined
+);
+assert.deepStrictEqual(
+  sendBackgroundMessage({action: "background:getTabState", tabId: 7}),
+  {ok: true, tabState: "https://example.com"}
+);
+assert.strictEqual(
+  sendBackgroundMessage({action: "background:addBlockedSite", tabId: -2,
+    blockedSite: "https://invalid.test"}),
+  undefined
+);
+assert.deepStrictEqual(
+  sendBackgroundMessage({action: "background:addBlockedSite", tabId: 14,
+    blockedSite: "https://message.test/path"}),
+  {ok: true}
+);
+assert.strictEqual(context.getTabState(14), "https://message.test");
+assert.strictEqual(
+  sendBackgroundMessage({action: "background:unlistSite", tabId: 14,
+    blockedSite: "javascript:alert(1)"}),
+  undefined
+);
+assert.deepStrictEqual(
+  sendBackgroundMessage({action: "background:unlistSite", tabId: 14,
+    blockedSite: "https://message.test/other"}, undefined,
+    "chrome-extension://test/blockedSite.html"),
+  {ok: true}
+);
+assert.strictEqual(context.getTabState(14), 0);
+
 assert.strictEqual(typeof listeners.onCommitted, "function");
 listeners.onCommitted({tabId: 8});
 assert.strictEqual(context.getTabState(8), 0);
@@ -226,5 +284,13 @@ const writesBeforeInvalidUnlist = storedValues.length;
 context.unlistSite(13, "javascript:alert(1)");
 assert.strictEqual(storedValues.length, writesBeforeInvalidUnlist);
 assert.strictEqual(context.getTabState(13), "https://other.test");
+
+const writesBeforeMessageClear = storedValues.length;
+assert.deepStrictEqual(
+  sendBackgroundMessage({action: "background:clearBlacklist"}),
+  {ok: true}
+);
+assert.strictEqual(storedValues.length, writesBeforeMessageClear + 1);
+assert.deepStrictEqual(plain(storedValues[storedValues.length - 1]), {blocked: []});
 
 console.log("Background startup, request, tab lifecycle, and global unlist tests passed.");
