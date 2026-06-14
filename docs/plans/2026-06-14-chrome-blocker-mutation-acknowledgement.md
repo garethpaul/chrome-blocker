@@ -12,19 +12,22 @@ mutation completed when it is still pending or can never run.
 
 ## Requirements
 
-1. Complete each background mutation response only after its state mutation
-   has executed.
-2. Return an explicit unsuccessful response when storage hydration has failed.
-3. Keep the Manifest V2 message channel open for deferred `sendResponse`
+1. Serialize background mutations so overlapping messages cannot race storage
+   writes or overwrite newer block-list state.
+2. Complete each background mutation response only after its
+   `chrome.storage.local.set` callback reports success.
+3. Return an explicit unsuccessful response when storage hydration or mutation
+   persistence has failed, leaving committed in-memory and tab state unchanged.
+4. Keep the Manifest V2 message channel open for deferred `sendResponse`
    callbacks by returning literal `true` only for accepted mutation actions.
-4. Preserve sender validation, action and payload validation, startup
+5. Preserve sender validation, action and payload validation, startup
    fail-closed request blocking, queued mutation order, storage ownership,
    tab-state cleanup, popup behavior, blocked-page navigation, and current
    message names.
-5. Require popup and blocked-page callers to proceed only after an acknowledged
+6. Require popup and blocked-page callers to proceed only after an acknowledged
    successful mutation.
-6. Add executable tests and mutation-sensitive source contracts for immediate,
-   queued, and hydration-failure responses.
+7. Add executable tests and mutation-sensitive source contracts for queued,
+   persisted, persistence-failure, and hydration-failure responses.
 
 ## Implementation Units
 
@@ -32,9 +35,12 @@ mutation completed when it is still pending or can never run.
 
 **Files:** `js/background.js`
 
-Pass a completion callback through the mutation queue. Invoke it with success
-after the mutation executes and with failure when hydration has permanently
-failed. Keep the runtime response channel open for deferred mutation responses.
+Use one serialized mutation queue for pre-hydration and post-hydration work.
+Each mutation derives its next block list without mutating committed state,
+persists that list, then publishes list and tab-state changes only when the
+storage callback has no `runtime.lastError`. Complete queued message callbacks
+with explicit success or failure and keep the runtime response channel open for
+deferred responses.
 
 ### Caller Acknowledgement
 
@@ -50,9 +56,10 @@ back to the origin only after unlisting succeeds.
 `scripts/test-blocked-site.js`, `scripts/check-baseline.sh`, `README.md`,
 `SECURITY.md`, `CHANGES.md`, this plan
 
-Exercise deferred acknowledgement before hydration, explicit failure after
-hydration failure, immediate completion after hydration, literal-true channel
-retention, and caller refusal to proceed on missing or unsuccessful responses.
+Exercise deferred acknowledgement before hydration, serialized persistence,
+explicit hydration and write failures, literal-true channel retention, no
+in-memory publication after failed writes, and caller refusal to proceed on
+missing or unsuccessful responses.
 
 ## Verification
 
@@ -78,5 +85,5 @@ retention, and caller refusal to proceed on missing or unsuccessful responses.
 
 - Chrome's Manifest V2 message contract requires a listener to return literal
   `true` when `sendResponse` will run asynchronously.
-- Existing state mutations remain synchronous once hydration has completed;
-  persistence callbacks are outside this narrow acknowledgement boundary.
+- The initial normalization write is part of hydration readiness: request
+  processing and queued mutations remain fail-closed until that write succeeds.
