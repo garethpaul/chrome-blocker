@@ -1,6 +1,6 @@
 # Chrome Blocker Browser Verification Matrix
 
-Status: In Progress
+Status: Completed
 
 ## Problem
 
@@ -33,4 +33,9 @@ or the user-visible add, remove, block, unlist, reload, and incognito flows.
 
 ## Verification
 
-- Pending implementation and bounded repository validation.
+- `sh -n scripts/check-baseline.sh` and the focused baseline checker passed.
+- `make check` passed from the repository and from an external working
+  directory, including all URL, background, blocked-page, and popup tests.
+- Twelve isolated hostile mutations of the checklist, guidance, and completed
+  plan contracts were rejected by `scripts/check-baseline.sh`.
+- No unpacked extension, popup, live navigation, Chrome storage, normal-profile, or split-incognito scenario was executed; every browser row remains `not run`.

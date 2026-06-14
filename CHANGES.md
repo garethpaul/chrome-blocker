@@ -2,6 +2,8 @@
 
 ## 2026-06-14
 
+- Added an exact-head Chrome browser verification matrix with privacy-safe
+  evidence fields and every live-extension row explicitly unexecuted.
 - Chrome Blocker accepts only finite integer tab IDs at runtime boundaries.
 - Replaced popup and blocked-page `getBackgroundPage()` calls with validated
   same-extension runtime messages for state reads and block-list mutations.

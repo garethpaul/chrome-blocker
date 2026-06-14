@@ -30,6 +30,7 @@ RUNTIME_MESSAGE_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-runtime-mes
 POPUP_TEST="$ROOT_DIR/scripts/test-popup.js"
 MUTATION_ACK_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-mutation-acknowledgement.md"
 INTEGER_TAB_ID_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-integer-tab-ids.md"
+BROWSER_VERIFICATION_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-browser-verification.md"
 
 for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$POPUP_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
@@ -930,5 +931,53 @@ if ! grep -Fq "Status: Completed" "$TAB_LIFECYCLE_PLAN" || \
   printf '%s\n' "Chrome blocker tab lifecycle helper plan must record completed status and make check verification." >&2
   exit 1
 fi
+
+for required_browser_path in "$ROOT_DIR/BROWSER_VERIFICATION.md" "$BROWSER_VERIFICATION_PLAN"; do
+  if [ ! -f "$required_browser_path" ]; then
+    printf '%s\n' "Required Chrome browser verification file is missing: ${required_browser_path#"$ROOT_DIR/"}" >&2
+    exit 1
+  fi
+done
+
+for browser_contract in \
+  'commit SHA and pull request' \
+  'synthetic hosts' \
+  'Load unpacked extension' \
+  'Empty startup hydration' \
+  'Popup add site' \
+  'Blocked navigation' \
+  'Blocked-page unlist' \
+  'Storage mutation failure' \
+  'Extension reload' \
+  'Multiple tabs' \
+  'Closed tab cleanup' \
+  'Split-incognito flow' \
+  'Do not convert `not run` into passing evidence.' \
+  'browsing history, profile paths, account data, cookies' \
+  'every Chrome, popup, navigation, storage, tab, and incognito row as unexecuted'; do
+  if ! grep -Fq "$browser_contract" "$ROOT_DIR/BROWSER_VERIFICATION.md"; then
+    printf '%s\n' "Chrome browser checklist must keep contract: $browser_contract" >&2
+    exit 1
+  fi
+done
+
+if ! grep -Fq 'BROWSER_VERIFICATION.md' "$README" || \
+   ! grep -Fq 'explicit unexecuted rows' "$README" || \
+   ! grep -Fq 'Chrome Blocker browser verification matrix' "$ROOT_DIR/VISION.md" || \
+   ! grep -Fq 'every live-extension row explicitly unexecuted' "$ROOT_DIR/CHANGES.md"; then
+  printf '%s\n' 'Project guidance must document the unexecuted Chrome browser matrix.' >&2
+  exit 1
+fi
+
+for browser_plan_contract in \
+  'Status: Completed' \
+  'make check' \
+  'hostile mutations' \
+  'No unpacked extension, popup, live navigation, Chrome storage, normal-profile, or split-incognito scenario was executed'; do
+  if ! grep -Fq "$browser_plan_contract" "$BROWSER_VERIFICATION_PLAN"; then
+    printf '%s\n' "Chrome browser plan must keep completion evidence: $browser_plan_contract" >&2
+    exit 1
+  fi
+done
 
 printf '%s\n' "Chrome blocker baseline checks passed."

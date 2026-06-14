@@ -80,6 +80,10 @@ requests, and manual dispatches. The workflow uses commit-pinned actions,
 read-only repository access, and a bounded runtime.
 The job does not persist checkout credentials after source retrieval.
 
+Use [`BROWSER_VERIFICATION.md`](BROWSER_VERIFICATION.md) to record exact-head
+unpacked-extension evidence. Keep unavailable Chrome scenarios as explicit unexecuted rows
+rather than treating Node VM or static checks as installed browser execution.
+
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
 ## Configuration and Secrets
