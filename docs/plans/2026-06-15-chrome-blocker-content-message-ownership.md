@@ -112,8 +112,8 @@ and completed plan evidence without weakening existing contracts.
 - The focused test first reproduced an unauthorized sender reading the current
   document URL before the source guard was added.
 - The focused content-script suite then passed authorized URL reads and
-  redirects while rejecting unauthorized senders, malformed origins, and the
-  stale-navigation race.
+  redirects while rejecting unauthorized senders, malformed messages and
+  origins, and the stale-navigation race.
 - `make test` passed all five real-script suites: URL rules, content script,
   background, blocked page, and popup.
 - JavaScript syntax checks passed for the changed source and test, and `sh -n`
@@ -125,5 +125,11 @@ and completed plan evidence without weakening existing contracts.
 - Five isolated hostile mutations were rejected for popup sender authorization,
   current-document origin ownership, wrong-extension fixtures, maintained
   guidance, and completed plan evidence.
+- The security-focused review found one missing malformed-message regression;
+  that coverage and its portable contract were added in a separate review fix,
+  and the full gate remained green.
+- Browser automation was not run because `agent-browser` is unavailable and the
+  change requires loading an unpacked extension rather than a served route. The
+  exact-head Chrome matrix remains explicitly `not run`.
 - Final audits and hosted exact-head state are recorded by the shipping evidence
   for this branch.
