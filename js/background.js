@@ -167,15 +167,35 @@ function clearTabBlockingStatesForOrigin(blockedOrigin) {
   }
 }
 
-function isTrustedExtensionSender(sender) {
+function isTrustedPopupSender(sender) {
   return sender && sender.id === chrome.runtime.id &&
-      typeof sender.url === "string" &&
-      sender.url.indexOf(chrome.runtime.getURL("")) === 0;
+      sender.url === chrome.runtime.getURL("popup.html");
+}
+
+function getTrustedBlockedPageOrigin(sender) {
+  var blockedPageUrl = chrome.runtime.getURL("blockedSite.html");
+  if (!sender || sender.id !== chrome.runtime.id ||
+      typeof sender.url !== "string" ||
+      sender.url.indexOf(blockedPageUrl + "?blocked=") !== 0) {
+    return "";
+  }
+
+  return getBlockedOriginFromSearch(sender.url.substring(blockedPageUrl.length));
 }
 
 function handleBackgroundMessage(message, sender, sendResponse) {
-  if (!isTrustedExtensionSender(sender) || !message ||
-      typeof message !== "object") {
+  if (!message || typeof message !== "object") {
+    return;
+  }
+
+  var popupAction = message.action === "background:getTabState" ||
+      message.action === "background:addBlockedSite" ||
+      message.action === "background:clearBlacklist";
+  var blockedPageOrigin = getTrustedBlockedPageOrigin(sender);
+  if ((popupAction && !isTrustedPopupSender(sender)) ||
+      (message.action === "background:unlistSite" &&
+       (blockedPageOrigin === "" || blockedPageOrigin !==
+        normalizeBlockedOrigin(message.blockedSite)))) {
     return;
   }
 

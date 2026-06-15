@@ -54,6 +54,7 @@
 - The background add and unblock paths use centralized tab state writes so invalid tab ids cannot create stray per-tab entries.
 - Chrome Blocker accepts only finite integer tab IDs at runtime boundaries.
 - Only the exact popup extension page may start the blocked-page unlist countdown.
+- Popup routes and blocked-page unlist routes use separate exact sender authorization.
 
 ## Agent workflow
 

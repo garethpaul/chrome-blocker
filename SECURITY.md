@@ -50,6 +50,7 @@ Helpful reports include:
   storage persistence succeeds.
 - Chrome Blocker accepts only finite integer tab IDs at runtime boundaries.
 - Only the exact popup extension page may start the blocked-page unlist countdown.
+- Popup routes and blocked-page unlist routes use separate exact sender authorization.
 
 ## Service and API Notes
 

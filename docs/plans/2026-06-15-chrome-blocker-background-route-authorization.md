@@ -1,6 +1,6 @@
 # Chrome Blocker Background Route Authorization
 
-Status: Planned
+Status: Completed
 
 ## Problem
 
@@ -41,3 +41,14 @@ can bypass the blocked-page countdown by calling the unlist mutation directly.
   mutations
 - exact-diff, generated-artifact, credential-pattern, conflict-marker, and
   whitespace audits
+
+## Verification: Completed
+
+- `sh -n scripts/check-baseline.sh`, all four focused Node VM tests, and full
+  repository and external-directory `make check` passed.
+- Focused hostile route mutations were rejected across popup authorization,
+  blocked-page authorization, cross-route callers, exact URL shape, guidance,
+  plan status, and verification evidence.
+- Exact-diff, generated-artifact, credential-pattern, conflict-marker, and
+  whitespace audits passed.
+- Node VM tests provide portable contract coverage; no unpacked-extension browser execution is claimed.

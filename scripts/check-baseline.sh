@@ -32,6 +32,7 @@ MUTATION_ACK_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-mutation-ackno
 INTEGER_TAB_ID_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-integer-tab-ids.md"
 BROWSER_VERIFICATION_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-browser-verification.md"
 UNLIST_SENDER_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-unlist-sender-guard.md"
+BACKGROUND_ROUTE_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-background-route-authorization.md"
 
 for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$UNLIST_SENDER_PLAN" "$POPUP_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
@@ -99,10 +100,16 @@ if grep -n 'chrome\.extension\.getBackgroundPage(' "$BACKGROUND" "$POPUP" "$BLOC
 fi
 
 for message_contract in \
-  'function isTrustedExtensionSender(sender)' \
+  'function isTrustedPopupSender(sender)' \
+  'sender.url === chrome.runtime.getURL("popup.html")' \
+  'function getTrustedBlockedPageOrigin(sender)' \
+  'sender.url.indexOf(blockedPageUrl + "?blocked=") !== 0' \
+  'getBlockedOriginFromSearch(sender.url.substring(blockedPageUrl.length))' \
   'sender.id === chrome.runtime.id' \
-  'sender.url.indexOf(chrome.runtime.getURL("")) === 0' \
   'function handleBackgroundMessage(message, sender, sendResponse)' \
+  'if ((popupAction && !isTrustedPopupSender(sender)) ||' \
+  'blockedPageOrigin !==' \
+  'normalizeBlockedOrigin(message.blockedSite)' \
   'chrome.runtime.onMessage.addListener(handleBackgroundMessage);' \
   'message.action === "background:getTabState"' \
   'message.action === "background:addBlockedSite"' \
@@ -110,6 +117,36 @@ for message_contract in \
   'message.action === "background:clearBlacklist"'; do
   if ! grep -Fq "$message_contract" "$BACKGROUND"; then
     printf '%s\n' "Missing validated background message contract: $message_contract" >&2
+    exit 1
+  fi
+done
+
+for route_test_contract in \
+  '"chrome-extension://test/blockedSite.html?blocked=https%3A%2F%2Fexample.com"' \
+  '"chrome-extension://test/blockedSite.html?blocked=" +' \
+  '{action: "background:clearBlacklist"}, undefined,'; do
+  if ! grep -Fq "$route_test_contract" "$BACKGROUND_TEST"; then
+    printf '%s\n' "Background test must preserve action-specific sender coverage: $route_test_contract" >&2
+    exit 1
+  fi
+done
+
+for route_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md" \
+  "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! tr '\n' ' ' < "$route_doc" | tr -s '[:space:]' ' ' | \
+      grep -Fq "Popup routes and blocked-page unlist routes use separate exact sender authorization."; then
+    printf '%s\n' "$route_doc must document background route authorization." >&2
+    exit 1
+  fi
+done
+
+for route_plan_contract in \
+  'Status: Completed' \
+  'make check' \
+  'hostile route mutations' \
+  'no unpacked-extension browser execution'; do
+  if ! grep -Fq "$route_plan_contract" "$BACKGROUND_ROUTE_PLAN"; then
+    printf '%s\n' "Background route plan must record completed verification: $route_plan_contract" >&2
     exit 1
   fi
 done

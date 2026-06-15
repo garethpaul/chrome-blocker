@@ -342,6 +342,13 @@ assert.deepStrictEqual(
   {ok: true, tabState: "https://example.com"}
 );
 assert.strictEqual(
+  sendBackgroundMessage(
+    {action: "background:getTabState", tabId: 7}, undefined,
+    "chrome-extension://test/blockedSite.html?blocked=https%3A%2F%2Fexample.com"
+  ),
+  undefined
+);
+assert.strictEqual(
   sendBackgroundMessage({action: "background:addBlockedSite", tabId: -2,
     blockedSite: "https://invalid.test"}),
   undefined
@@ -370,10 +377,25 @@ assert.strictEqual(
     blockedSite: "javascript:alert(1)"}),
   undefined
 );
+assert.strictEqual(
+  sendBackgroundMessage({action: "background:unlistSite", tabId: 14,
+    blockedSite: "https://message.test/other"}),
+  undefined
+);
+assert.strictEqual(context.getTabState(14), "https://message.test");
+assert.strictEqual(
+  sendBackgroundMessage({action: "background:unlistSite", tabId: 14,
+    blockedSite: "https://message.test/other"}, undefined,
+    "chrome-extension://test/blockedSite.html?blocked=" +
+      encodeURIComponent("https://other.test")),
+  undefined
+);
+assert.strictEqual(context.getTabState(14), "https://message.test");
 assert.deepStrictEqual(
   sendBackgroundMessage({action: "background:unlistSite", tabId: 14,
     blockedSite: "https://message.test/other"}, undefined,
-    "chrome-extension://test/blockedSite.html"),
+    "chrome-extension://test/blockedSite.html?blocked=" +
+      encodeURIComponent("https://message.test")),
   {ok: true}
 );
 assert.strictEqual(context.getTabState(14), 0);
@@ -415,6 +437,14 @@ assert.strictEqual(storedValues.length, writesBeforeInvalidUnlist);
 assert.strictEqual(context.getTabState(13), "https://other.test");
 
 const writesBeforeMessageClear = storedValues.length;
+assert.strictEqual(
+  sendBackgroundMessage(
+    {action: "background:clearBlacklist"}, undefined,
+    "chrome-extension://test/blockedSite.html?blocked=https%3A%2F%2Fother.test"
+  ),
+  undefined
+);
+assert.strictEqual(storedValues.length, writesBeforeMessageClear);
 assert.deepStrictEqual(
   sendBackgroundMessage({action: "background:clearBlacklist"}),
   {ok: true}
