@@ -28,16 +28,85 @@ STARTUP_HYDRATION_PLAN="$ROOT_DIR/docs/plans/2026-06-13-chrome-blocker-startup-h
 HYDRATION_MUTATION_PLAN="$ROOT_DIR/docs/plans/2026-06-13-chrome-blocker-hydration-mutations.md"
 RUNTIME_MESSAGE_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-runtime-message-boundary.md"
 POPUP_TEST="$ROOT_DIR/scripts/test-popup.js"
+CONTENT_SCRIPT_TEST="$ROOT_DIR/scripts/test-content-script.js"
 MUTATION_ACK_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-mutation-acknowledgement.md"
 INTEGER_TAB_ID_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-integer-tab-ids.md"
 BROWSER_VERIFICATION_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-browser-verification.md"
 UNLIST_SENDER_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-unlist-sender-guard.md"
 BACKGROUND_ROUTE_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-background-route-authorization.md"
 UNLIST_TAB_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-unlist-tab-ownership.md"
+CONTENT_MESSAGE_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-content-message-ownership.md"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$UNLIST_SENDER_PLAN" "$BACKGROUND_ROUTE_PLAN" "$UNLIST_TAB_OWNERSHIP_PLAN" "$POPUP_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$UNLIST_SENDER_PLAN" "$BACKGROUND_ROUTE_PLAN" "$UNLIST_TAB_OWNERSHIP_PLAN" "$CONTENT_MESSAGE_OWNERSHIP_PLAN" "$POPUP_TEST" "$CONTENT_SCRIPT_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
+    exit 1
+  fi
+done
+
+for content_message_source_contract in \
+  'function isTrustedPopupSender(sender)' \
+  'sender.id === chrome.runtime.id' \
+  'sender.url === chrome.runtime.getURL("popup.html")' \
+  'if (!isTrustedPopupSender(sender) || !request ||' \
+  'var currentSite = normalizeBlockedOrigin(document.location.href);' \
+  'if (blockedSite === "" || currentSite !== blockedSite)'; do
+  if ! grep -Fq "$content_message_source_contract" "$CONTENT_SCRIPT"; then
+    printf '%s\n' "Missing content-script message ownership contract: $content_message_source_contract" >&2
+    exit 1
+  fi
+done
+
+content_message_listener=$(awk '
+  /chrome\.runtime\.onMessage\.addListener\(/ { capture = 1 }
+  capture { print }
+' "$CONTENT_SCRIPT")
+content_sender_guard_line=$(printf '%s\n' "$content_message_listener" | grep -nF 'if (!isTrustedPopupSender(sender) || !request ||' | cut -d: -f1)
+content_action_line=$(printf '%s\n' "$content_message_listener" | grep -nF 'if (request.action === "geturl")' | cut -d: -f1)
+content_origin_guard_line=$(printf '%s\n' "$content_message_listener" | grep -nF 'if (blockedSite === "" || currentSite !== blockedSite)' | cut -d: -f1)
+content_redirect_line=$(printf '%s\n' "$content_message_listener" | grep -nF 'window.location = chrome.runtime.getURL(' | cut -d: -f1)
+if [ -z "$content_sender_guard_line" ] || [ -z "$content_action_line" ] ||
+   [ -z "$content_origin_guard_line" ] || [ -z "$content_redirect_line" ] ||
+   [ "$content_sender_guard_line" -ge "$content_action_line" ] ||
+   [ "$content_origin_guard_line" -ge "$content_redirect_line" ]; then
+  printf '%s\n' "Content-script sender and current-origin authorization must precede action effects." >&2
+  exit 1
+fi
+
+for content_message_test_contract in \
+  'const popupSender = {' \
+  '{id: "other-extension", url: popupSender.url}' \
+  'url: popupSender.url + "?forged=1"' \
+  'currentLocation.href = "https://different.example/private";' \
+  'assert.strictEqual(context.window.location, "unchanged");' \
+  'Content-script sender and document ownership tests passed.'; do
+  if ! grep -Fq "$content_message_test_contract" "$CONTENT_SCRIPT_TEST"; then
+    printf '%s\n' "Missing content-script ownership regression: $content_message_test_contract" >&2
+    exit 1
+  fi
+done
+
+if ! grep -Fq '$(NODE) $(ROOT)scripts/test-content-script.js' "$ROOT_DIR/Makefile"; then
+  printf '%s\n' "The full test gate must execute the content-script ownership suite." >&2
+  exit 1
+fi
+
+for content_message_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md" \
+  "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! grep -Fq 'Content-script URL reads and redirects require exact popup sender and current-document origin ownership.' "$content_message_doc"; then
+    printf '%s\n' "$content_message_doc must document content-script sender and document ownership." >&2
+    exit 1
+  fi
+done
+
+for content_message_plan_contract in \
+  'Status: Completed' \
+  'unauthorized sender' \
+  'stale-navigation race' \
+  'test-content-script.js' \
+  'hostile mutations'; do
+  if ! grep -Fq "$content_message_plan_contract" "$CONTENT_MESSAGE_OWNERSHIP_PLAN"; then
+    printf '%s\n' "Content message ownership plan must preserve completed evidence: $content_message_plan_contract" >&2
     exit 1
   fi
 done
@@ -624,8 +693,8 @@ if ! grep -Fq "var blockedSite = normalizeBlockedOrigin(request.blockedSite)" "$
   exit 1
 fi
 
-if ! grep -Fq 'if (blockedSite === "")' "$CONTENT_SCRIPT"; then
-  printf '%s\n' "Content redirects must ignore invalid blocked origins." >&2
+if ! grep -Fq 'if (blockedSite === "" || currentSite !== blockedSite)' "$CONTENT_SCRIPT"; then
+  printf '%s\n' "Content redirects must ignore invalid or stale blocked origins." >&2
   exit 1
 fi
 

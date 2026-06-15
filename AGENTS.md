@@ -57,6 +57,7 @@
 - Chrome Blocker accepts only finite integer tab IDs at runtime boundaries.
 - Only the exact popup extension page may start the blocked-page unlist countdown.
 - Popup routes and blocked-page unlist routes use separate exact sender authorization.
+- Content-script URL reads and redirects require exact popup sender and current-document origin ownership.
 
 ## Agent workflow
 

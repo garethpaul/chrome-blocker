@@ -1,6 +1,6 @@
 # Chrome Blocker Content Message Ownership
 
-Status: Planned
+Status: Completed
 
 ## Problem
 
@@ -98,11 +98,32 @@ and completed plan evidence without weakening existing contracts.
 - Do not claim unpacked-extension browser execution; the automated evidence is
   the real-script VM contract.
 
-## Verification To Record
+## Work Completed
 
-- Focused pre-fix reproduction and post-fix content-script tests.
-- Repository-root and external-directory full gates.
-- Mutation-sensitive sender, origin, test, guidance, and plan contracts.
-- Exact diff, artifact, dependency/permission, secret-pattern, whitespace, and
-  conflict-marker audits.
-- Exact local, upstream, pull-request, and hosted head evidence.
+- Added exact popup sender authorization before content-script action dispatch.
+- Required redirect requests to retain ownership of the receiving document's
+  current normalized origin.
+- Added a real-script content VM suite and wired it into the complete test gate.
+- Added mutation-sensitive portable contracts and synchronized maintained
+  guidance.
+
+## Verification Completed
+
+- The focused test first reproduced an unauthorized sender reading the current
+  document URL before the source guard was added.
+- The focused content-script suite then passed authorized URL reads and
+  redirects while rejecting unauthorized senders, malformed origins, and the
+  stale-navigation race.
+- `make test` passed all five real-script suites: URL rules, content script,
+  background, blocked page, and popup.
+- JavaScript syntax checks passed for the changed source and test, and `sh -n`
+  passed for the portable baseline checker.
+- Repository-root `make check` passed the baseline and all five real-script
+  suites.
+- The complete `make check` gate also passed from `/tmp` through the absolute
+  Makefile path.
+- Five isolated hostile mutations were rejected for popup sender authorization,
+  current-document origin ownership, wrong-extension fixtures, maintained
+  guidance, and completed plan evidence.
+- Final audits and hosted exact-head state are recorded by the shipping evidence
+  for this branch.

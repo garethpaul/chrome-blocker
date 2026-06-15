@@ -118,6 +118,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
   navigation remains fail closed.
 - The content-script redirect messages are normalized before constructing
   `blockedSite.html` URLs.
+- Content-script URL reads and redirects require exact popup sender and current-document origin ownership.
 - The background context owns block-list storage writes; the popup delegates new
   blocked origins instead of writing the same list twice.
 - Background block-list mutations are serialized and acknowledged only after

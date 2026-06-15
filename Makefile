@@ -8,6 +8,7 @@ lint:
 
 test:
 	$(NODE) $(ROOT)scripts/test-url-rules.js
+	$(NODE) $(ROOT)scripts/test-content-script.js
 	$(NODE) $(ROOT)scripts/test-background.js
 	$(NODE) $(ROOT)scripts/test-blocked-site.js
 	$(NODE) $(ROOT)scripts/test-popup.js
