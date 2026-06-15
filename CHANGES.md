@@ -4,6 +4,7 @@
 
 - Only the exact popup extension page may start the blocked-page unlist countdown.
 - Popup routes and blocked-page unlist routes use separate exact sender authorization.
+- Blocked-page unlist mutations require exact blocked-origin and sender-tab ownership.
 
 ## 2026-06-14
 

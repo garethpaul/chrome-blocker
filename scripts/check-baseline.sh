@@ -33,10 +33,66 @@ INTEGER_TAB_ID_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-integer-tab-
 BROWSER_VERIFICATION_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-browser-verification.md"
 UNLIST_SENDER_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-unlist-sender-guard.md"
 BACKGROUND_ROUTE_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-background-route-authorization.md"
+UNLIST_TAB_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-unlist-tab-ownership.md"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$UNLIST_SENDER_PLAN" "$POPUP_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$UNLIST_SENDER_PLAN" "$BACKGROUND_ROUTE_PLAN" "$UNLIST_TAB_OWNERSHIP_PLAN" "$POPUP_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
+    exit 1
+  fi
+done
+
+for unlist_tab_source_contract in \
+  'function hasTrustedBlockedPageTab(sender, tabid)' \
+  'isValidTabId(tabid) && sender && sender.tab &&' \
+  'isValidTabId(sender.tab.id) && sender.tab.id === tabid' \
+  '!hasTrustedBlockedPageTab(sender, message.tabId)'; do
+  if ! grep -Fq "$unlist_tab_source_contract" "$BACKGROUND"; then
+    printf '%s\n' "Missing blocked-page unlist tab ownership contract: $unlist_tab_source_contract" >&2
+    exit 1
+  fi
+done
+
+background_message_handler=$(awk '
+  /function handleBackgroundMessage\(message, sender, sendResponse\)/ { capture = 1 }
+  capture && /function requestChecker\(request\)/ { exit }
+  capture { print }
+' "$BACKGROUND")
+tab_guard_line=$(printf '%s\n' "$background_message_handler" | grep -nF '!hasTrustedBlockedPageTab(sender, message.tabId)' | cut -d: -f1)
+unlist_dispatch_line=$(printf '%s\n' "$background_message_handler" | grep -nF 'unlistSite(message.tabId, message.blockedSite, function(success)' | cut -d: -f1)
+if [ -z "$tab_guard_line" ] || [ -z "$unlist_dispatch_line" ] || \
+   [ "$tab_guard_line" -ge "$unlist_dispatch_line" ]; then
+  printf '%s\n' "Blocked-page sender-tab authorization must precede unlist mutation dispatch." >&2
+  exit 1
+fi
+
+for unlist_tab_test_contract in \
+  'function sendBackgroundMessage(message, senderId, senderUrl, senderTabId)' \
+  'sender.tab = {id: senderTabId};' \
+  'for (const senderTabId of [undefined, -1, 1.5, 15])' \
+  'encodeURIComponent("https://message.test"), 14)'; do
+  if ! grep -Fq "$unlist_tab_test_contract" "$BACKGROUND_TEST"; then
+    printf '%s\n' "Missing blocked-page sender-tab regression: $unlist_tab_test_contract" >&2
+    exit 1
+  fi
+done
+
+for unlist_tab_doc in "$README" "$ROOT_DIR/SECURITY.md" "$ROOT_DIR/VISION.md" \
+  "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/AGENTS.md"; do
+  if ! tr '\n' ' ' < "$unlist_tab_doc" | tr -s '[:space:]' ' ' | \
+      grep -Fq "Blocked-page unlist mutations require exact blocked-origin and sender-tab ownership."; then
+    printf '%s\n' "$unlist_tab_doc must document blocked-page sender-tab ownership." >&2
+    exit 1
+  fi
+done
+
+for unlist_tab_plan_contract in \
+  'status: completed' \
+  'make check' \
+  'hostile sender-tab mutations were rejected' \
+  'No unpacked-extension browser flow was executed'; do
+  if ! grep -Fq "$unlist_tab_plan_contract" "$UNLIST_TAB_OWNERSHIP_PLAN"; then
+    printf '%s\n' "Unlist tab ownership plan must record completed verification: $unlist_tab_plan_contract" >&2
     exit 1
   fi
 done

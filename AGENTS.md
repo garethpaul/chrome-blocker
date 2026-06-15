@@ -41,6 +41,8 @@
 
 ## Safety and gotchas
 
+- Blocked-page unlist mutations require exact blocked-origin and sender-tab ownership.
+
 - Detected references to Twitter. Keep API keys, OAuth credentials, tokens, and account-specific values in local configuration only.
 - The blocked-page unblock countdown clears any prior interval before starting a new timer and resets interval state when the modal closes.
 - Popup-to-blocked-page unlist requests are typed and must match both the current numeric tab id and normalized blocked origin.

@@ -1,7 +1,7 @@
 ---
 title: Chrome Blocker Unlist Tab Ownership
 type: security
-status: planned
+status: completed
 date: 2026-06-15
 ---
 
@@ -70,3 +70,15 @@ ownership.
   storage hydration, mutation serialization, redirect behavior, dependencies,
   manifest permissions, or workflows.
 - Keep this pull request stacked on PR #12 and preserve base-first ordering.
+
+## Completion Evidence
+
+- The focused background VM suite passed same-tab success and missing,
+  negative, fractional, and mismatched sender-tab rejection.
+- All four Node VM suites passed under Node 20.
+- Repository-root and external-directory `make check` passed the portable
+  static baseline and all four Node VM suites.
+- Eight hostile sender-tab mutations were rejected across the
+  predicate, sender-tab presence, integer validation, equality, route guard,
+  regression fixture, maintained guidance, and incomplete plan status.
+- No unpacked-extension browser flow was executed.

@@ -183,6 +183,11 @@ function getTrustedBlockedPageOrigin(sender) {
   return getBlockedOriginFromSearch(sender.url.substring(blockedPageUrl.length));
 }
 
+function hasTrustedBlockedPageTab(sender, tabid) {
+  return isValidTabId(tabid) && sender && sender.tab &&
+      isValidTabId(sender.tab.id) && sender.tab.id === tabid;
+}
+
 function handleBackgroundMessage(message, sender, sendResponse) {
   if (!message || typeof message !== "object") {
     return;
@@ -195,7 +200,8 @@ function handleBackgroundMessage(message, sender, sendResponse) {
   if ((popupAction && !isTrustedPopupSender(sender)) ||
       (message.action === "background:unlistSite" &&
        (blockedPageOrigin === "" || blockedPageOrigin !==
-        normalizeBlockedOrigin(message.blockedSite)))) {
+        normalizeBlockedOrigin(message.blockedSite) ||
+        !hasTrustedBlockedPageTab(sender, message.tabId)))) {
     return;
   }
 

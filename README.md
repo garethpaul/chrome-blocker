@@ -74,6 +74,7 @@ Chrome and DOM APIs and covers rejected unlist messages plus the accepted
 same-tab, same-origin request.
 Only the exact popup extension page may start the blocked-page unlist countdown.
 Popup routes and blocked-page unlist routes use separate exact sender authorization.
+Blocked-page unlist mutations require exact blocked-origin and sender-tab ownership.
 The popup behavior test executes the real popup script with mocked Chrome and
 DOM APIs and covers background state lookup, add, clear, unlist, and redirect
 messages.

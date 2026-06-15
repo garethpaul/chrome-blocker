@@ -314,12 +314,16 @@ assert.strictEqual(
 );
 assert.strictEqual(context.getTabState(6), 0);
 
-function sendBackgroundMessage(message, senderId, senderUrl) {
+function sendBackgroundMessage(message, senderId, senderUrl, senderTabId) {
   let response;
-  listeners.onMessage(message, {
+  const sender = {
     id: senderId || "test-extension",
     url: senderUrl || "chrome-extension://test/popup.html"
-  }, function(value) {
+  };
+  if (senderTabId !== undefined) {
+    sender.tab = {id: senderTabId};
+  }
+  listeners.onMessage(message, sender, function(value) {
     response = plain(value);
   });
   return response;
@@ -391,11 +395,21 @@ assert.strictEqual(
   undefined
 );
 assert.strictEqual(context.getTabState(14), "https://message.test");
+for (const senderTabId of [undefined, -1, 1.5, 15]) {
+  assert.strictEqual(
+    sendBackgroundMessage({action: "background:unlistSite", tabId: 14,
+      blockedSite: "https://message.test/other"}, undefined,
+      "chrome-extension://test/blockedSite.html?blocked=" +
+        encodeURIComponent("https://message.test"), senderTabId),
+    undefined
+  );
+  assert.strictEqual(context.getTabState(14), "https://message.test");
+}
 assert.deepStrictEqual(
   sendBackgroundMessage({action: "background:unlistSite", tabId: 14,
     blockedSite: "https://message.test/other"}, undefined,
     "chrome-extension://test/blockedSite.html?blocked=" +
-      encodeURIComponent("https://message.test")),
+      encodeURIComponent("https://message.test"), 14),
   {ok: true}
 );
 assert.strictEqual(context.getTabState(14), 0);
