@@ -62,6 +62,12 @@ for (const sender of [
   assert.strictEqual(send({action: "geturl"}, sender), undefined);
 }
 
+for (const message of [undefined, null, "geturl", {}, {action: "unknown"}]) {
+  context.window.location = "unchanged";
+  assert.strictEqual(send(message), undefined);
+  assert.strictEqual(context.window.location, "unchanged");
+}
+
 context.window.location = currentLocation;
 send({action: "redirect", blockedSite: "https://example.com"});
 assert.strictEqual(

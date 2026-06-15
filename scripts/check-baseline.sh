@@ -77,6 +77,7 @@ for content_message_test_contract in \
   'const popupSender = {' \
   '{id: "other-extension", url: popupSender.url}' \
   'url: popupSender.url + "?forged=1"' \
+  'for (const message of [undefined, null, "geturl", {}, {action: "unknown"}])' \
   'currentLocation.href = "https://different.example/private";' \
   'assert.strictEqual(context.window.location, "unchanged");' \
   'Content-script sender and document ownership tests passed.'; do
