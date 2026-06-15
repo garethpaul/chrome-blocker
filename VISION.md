@@ -32,6 +32,7 @@ Priority:
 - Replay queued block-list mutations only after successful startup hydration
 - Keep blocked-page actions scoped to a valid current tab
 - Require typed unlist messages to match both the blocked origin and active tab
+- Only the exact popup extension page may start the blocked-page unlist countdown.
 - Keep blocked-page redirects scoped to the guarded unlist path
 - Keep popup actions scoped to a valid active tab id
 - Validate redirect message payloads before constructing extension URLs

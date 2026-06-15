@@ -31,10 +31,64 @@ POPUP_TEST="$ROOT_DIR/scripts/test-popup.js"
 MUTATION_ACK_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-mutation-acknowledgement.md"
 INTEGER_TAB_ID_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-integer-tab-ids.md"
 BROWSER_VERIFICATION_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-browser-verification.md"
+UNLIST_SENDER_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-unlist-sender-guard.md"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$POPUP_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$UNLIST_SENDER_PLAN" "$POPUP_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
+    exit 1
+  fi
+done
+
+for unlist_sender_source_contract in \
+  'function isTrustedPopupSender(sender)' \
+  'sender.id === chrome.runtime.id' \
+  'sender.url === chrome.runtime.getURL("popup.html")' \
+  'if (!isTrustedPopupSender(sender))'; do
+  if ! grep -Fq "$unlist_sender_source_contract" "$BLOCKED_SITE"; then
+    printf '%s\n' "Missing blocked-page popup sender guard: $unlist_sender_source_contract" >&2
+    exit 1
+  fi
+done
+
+for unlist_sender_test_contract in \
+  'const popupSender = {' \
+  '{id: "other-extension", url: extensionRoot + "popup.html"}' \
+  '{id: "chrome-blocker", url: extensionRoot + "background.html"}' \
+  '{id: "chrome-blocker", url: extensionRoot + "popup.html/extra"}' \
+  'assert.strictEqual(currentTabLookups, lookupsBeforeRejectedSenders);' \
+  '}, popupSender, function() {});'; do
+  if ! grep -Fq "$unlist_sender_test_contract" "$BLOCKED_SITE_TEST"; then
+    printf '%s\n' "Missing blocked-page sender regression: $unlist_sender_test_contract" >&2
+    exit 1
+  fi
+done
+
+sender_guard_line=$(grep -nF 'if (!isTrustedPopupSender(sender))' "$BLOCKED_SITE" | cut -d: -f1)
+tab_lookup_line=$(grep -nF 'withCurrentTab(function(tab) {' "$BLOCKED_SITE" | tail -n 1 | cut -d: -f1)
+if [ -z "$sender_guard_line" ] || [ -z "$tab_lookup_line" ] || \
+   [ "$sender_guard_line" -ge "$tab_lookup_line" ]; then
+  printf '%s\n' "Blocked-page sender authorization must precede the tab lookup." >&2
+  exit 1
+fi
+
+for unlist_sender_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md" \
+  "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! tr '\n' ' ' < "$unlist_sender_doc" | tr -s '[:space:]' ' ' | \
+      grep -Fq "Only the exact popup extension page may start the blocked-page unlist countdown."; then
+    printf '%s\n' "$unlist_sender_doc must document popup-only unlist initiation." >&2
+    exit 1
+  fi
+done
+
+for unlist_sender_plan_contract in \
+  'Status: Completed' \
+  '## Verification: Completed' \
+  'make check' \
+  'hostile mutations' \
+  'no unpacked-extension browser execution'; do
+  if ! grep -Fq "$unlist_sender_plan_contract" "$UNLIST_SENDER_PLAN"; then
+    printf '%s\n' "Unlist sender plan must record completed verification: $unlist_sender_plan_contract" >&2
     exit 1
   fi
 done

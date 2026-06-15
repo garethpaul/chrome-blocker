@@ -1,5 +1,9 @@
 # Chrome Blocker Changes
 
+## 2026-06-15
+
+- Only the exact popup extension page may start the blocked-page unlist countdown.
+
 ## 2026-06-14
 
 - Added an exact-head Chrome browser verification matrix with privacy-safe

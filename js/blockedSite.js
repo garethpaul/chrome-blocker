@@ -74,11 +74,20 @@ function isValidUnlistMessage(message, tab) {
       normalizeBlockedOrigin(message.blockedSite) === site;
 }
 
+function isTrustedPopupSender(sender) {
+  return sender && sender.id === chrome.runtime.id &&
+      sender.url === chrome.runtime.getURL("popup.html");
+}
+
 $("#unlistModal").on('hidden', modalHidden);
 $("#cancelUnlist").click(hideModal);
 
 chrome.runtime.onMessage.addListener(
     function(message, sender, sendResponse) {
+  if (!isTrustedPopupSender(sender)) {
+    return;
+  }
+
   withCurrentTab(function(tab) {
     if (isValidUnlistMessage(message, tab)) {
       $("#unlistModal").modal("show");

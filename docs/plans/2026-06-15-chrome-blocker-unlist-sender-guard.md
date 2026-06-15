@@ -1,6 +1,6 @@
 # Chrome Blocker Unlist Sender Guard
 
-Status: In Progress
+Status: Completed
 
 ## Problem
 
@@ -28,8 +28,13 @@ start the unlist countdown by constructing the same message.
 - Do not claim unpacked-extension browser execution from Node VM tests.
 - Do not merge or close stacked pull requests without explicit authorization.
 
-## Verification
+## Verification: Completed
 
-- Pending implementation and focused VM tests.
-- Pending repository-root and external-directory `make check`.
-- Pending hostile mutation and final diff, artifact, and secret audits.
+- `sh -n scripts/check-baseline.sh` and all four focused Node VM tests passed.
+- Full `make check` passes from the repository root and from an external
+  working directory using the absolute Makefile path.
+- Eight focused hostile mutations were rejected across the sender predicate,
+  listener ordering, sender fixtures, guidance, and completed plan evidence.
+- Final diff, generated-artifact, credential-pattern, and whitespace audits
+  passed for the intended paths.
+- Node VM tests provide portable contract coverage; no unpacked-extension browser execution is claimed.

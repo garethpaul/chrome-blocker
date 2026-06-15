@@ -49,6 +49,7 @@ Helpful reports include:
 - Background block-list mutations are serialized and acknowledged only after
   storage persistence succeeds.
 - Chrome Blocker accepts only finite integer tab IDs at runtime boundaries.
+- Only the exact popup extension page may start the blocked-page unlist countdown.
 
 ## Service and API Notes
 

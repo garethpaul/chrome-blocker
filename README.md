@@ -72,6 +72,7 @@ subframes, blocked redirects, allowed navigation, and tab state updates.
 The blocked-page behavior test executes the real runtime listener with mocked
 Chrome and DOM APIs and covers rejected unlist messages plus the accepted
 same-tab, same-origin request.
+Only the exact popup extension page may start the blocked-page unlist countdown.
 The popup behavior test executes the real popup script with mocked Chrome and
 DOM APIs and covers background state lookup, add, clear, unlist, and redirect
 messages.

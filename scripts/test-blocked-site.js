@@ -7,8 +7,14 @@ const elementState = {};
 let messageListener;
 let intervalStarts = 0;
 let intervalClears = 0;
+let currentTabLookups = 0;
 const sentMessages = [];
 let messageResponse = {ok: false};
+const extensionRoot = "chrome-extension://chrome-blocker/";
+const popupSender = {
+  id: "chrome-blocker",
+  url: extensionRoot + "popup.html"
+};
 
 function element(selector) {
   if (!elementState[selector]) {
@@ -44,7 +50,11 @@ const context = {
   URL,
   chrome: {
     runtime: {
+      id: "chrome-blocker",
       lastError: null,
+      getURL(pathname) {
+        return extensionRoot + pathname;
+      },
       onMessage: {
         addListener(listener) {
           messageListener = listener;
@@ -57,6 +67,7 @@ const context = {
     },
     tabs: {
       getCurrent(callback) {
+        currentTabLookups += 1;
         callback({id: 7});
       }
     }
@@ -105,8 +116,29 @@ const rejectedMessages = [
 ];
 
 for (const message of rejectedMessages) {
-  messageListener(message, {}, function() {});
+  messageListener(message, popupSender, function() {});
 }
+
+const rejectedSenders = [
+  undefined,
+  {},
+  {id: "other-extension", url: extensionRoot + "popup.html"},
+  {id: "chrome-blocker", url: "https://example.com/popup.html"},
+  {id: "chrome-blocker", url: extensionRoot + "background.html"},
+  {id: "chrome-blocker", url: extensionRoot + "popup.html/extra"},
+  {id: "chrome-blocker", url: extensionRoot + "popup.html?source=other"}
+];
+const lookupsBeforeRejectedSenders = currentTabLookups;
+
+for (const sender of rejectedSenders) {
+  messageListener({
+    action: "beginUnlist",
+    tabId: 7,
+    blockedSite: "https://example.com"
+  }, sender, function() {});
+}
+
+assert.strictEqual(currentTabLookups, lookupsBeforeRejectedSenders);
 
 assert.deepStrictEqual(elementState["#unlistModal"].modals, []);
 assert.strictEqual(intervalStarts, 0);
@@ -116,7 +148,7 @@ messageListener({
   action: "beginUnlist",
   tabId: 7,
   blockedSite: "https://EXAMPLE.com/another/path"
-}, {}, function() {});
+}, popupSender, function() {});
 
 assert.deepStrictEqual(elementState["#unlistModal"].modals, ["show"]);
 assert.strictEqual(intervalStarts, 1);
@@ -130,7 +162,7 @@ messageListener({
   action: "beginUnlist",
   tabId: 7,
   blockedSite: "https://example.com"
-}, {}, function() {});
+}, popupSender, function() {});
 
 assert.deepStrictEqual(elementState["#unlistModal"].modals, ["show", "show"]);
 assert.strictEqual(intervalStarts, 2);
