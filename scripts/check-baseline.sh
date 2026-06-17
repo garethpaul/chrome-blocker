@@ -191,12 +191,14 @@ done
 
 UNLIST_STATE_PLAN_FLAT=$(tr '\n' ' ' < "$UNLIST_STATE_OWNERSHIP_PLAN" | tr -s '[:space:]' ' ')
 for unlist_state_plan_contract in \
-  'status: implemented' \
+  'status: completed' \
   "sender tab's current blocked-origin state" \
   'same-extension, exact-URL, same-tab unlist message' \
   'Require exact-head push and pull-request checks across Node 20, 22, and 24' \
   'Seven isolated mutations were rejected' \
-  'remain pending until the implementation commit is pushed'; do
+  'Exact implementation head `31192430b334ac8d7636fc024c9ed7d26511037a`' \
+  '27680147024' \
+  '27680156046'; do
   if ! printf '%s\n' "$UNLIST_STATE_PLAN_FLAT" | grep -Fq "$unlist_state_plan_contract"; then
     printf '%s\n' "Unlist state ownership plan must preserve contract: $unlist_state_plan_contract" >&2
     exit 1

@@ -2,7 +2,7 @@
 title: Chrome Blocker Unlist State Ownership
 type: security
 date: 2026-06-17
-status: implemented
+status: completed
 execution: code
 ---
 
@@ -93,8 +93,9 @@ documented boundary fails the maintained gate.
   README scope, and plan status.
 - The exact diff contains no generated extension artifacts or
   credential-shaped additions.
-- Exact-head push and pull-request checks across Node 20, 22, and 24 remain
-  pending until the implementation commit is pushed.
+- Exact implementation head `31192430b334ac8d7636fc024c9ed7d26511037a`
+  passed Node 20, 22, and 24 on push run `27680147024` and pull-request run
+  `27680156046`.
 
 ## Risks
 
