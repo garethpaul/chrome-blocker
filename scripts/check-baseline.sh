@@ -36,8 +36,9 @@ UNLIST_SENDER_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-unlist-sender
 BACKGROUND_ROUTE_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-background-route-authorization.md"
 UNLIST_TAB_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-unlist-tab-ownership.md"
 CONTENT_MESSAGE_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-content-message-ownership.md"
+UNLIST_STATE_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-17-chrome-blocker-unlist-state-ownership.md"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$UNLIST_SENDER_PLAN" "$BACKGROUND_ROUTE_PLAN" "$UNLIST_TAB_OWNERSHIP_PLAN" "$CONTENT_MESSAGE_OWNERSHIP_PLAN" "$POPUP_TEST" "$CONTENT_SCRIPT_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$UNLIST_SENDER_PLAN" "$BACKGROUND_ROUTE_PLAN" "$UNLIST_TAB_OWNERSHIP_PLAN" "$CONTENT_MESSAGE_OWNERSHIP_PLAN" "$UNLIST_STATE_OWNERSHIP_PLAN" "$POPUP_TEST" "$CONTENT_SCRIPT_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -113,10 +114,11 @@ for content_message_plan_contract in \
 done
 
 for unlist_tab_source_contract in \
-  'function hasTrustedBlockedPageTab(sender, tabid)' \
+  'function hasTrustedBlockedPageState(sender, tabid, blockedOrigin)' \
   'isValidTabId(tabid) && sender && sender.tab &&' \
-  'isValidTabId(sender.tab.id) && sender.tab.id === tabid' \
-  '!hasTrustedBlockedPageTab(sender, message.tabId)'; do
+  'isValidTabId(sender.tab.id) && sender.tab.id === tabid &&' \
+  'getTabState(tabid) === blockedOrigin' \
+  '!hasTrustedBlockedPageState(sender, message.tabId, blockedPageOrigin)'; do
   if ! grep -Fq "$unlist_tab_source_contract" "$BACKGROUND"; then
     printf '%s\n' "Missing blocked-page unlist tab ownership contract: $unlist_tab_source_contract" >&2
     exit 1
@@ -128,7 +130,7 @@ background_message_handler=$(awk '
   capture && /function requestChecker\(request\)/ { exit }
   capture { print }
 ' "$BACKGROUND")
-tab_guard_line=$(printf '%s\n' "$background_message_handler" | grep -nF '!hasTrustedBlockedPageTab(sender, message.tabId)' | cut -d: -f1)
+tab_guard_line=$(printf '%s\n' "$background_message_handler" | grep -nF '!hasTrustedBlockedPageState(sender, message.tabId, blockedPageOrigin)' | cut -d: -f1)
 unlist_dispatch_line=$(printf '%s\n' "$background_message_handler" | grep -nF 'unlistSite(message.tabId, message.blockedSite, function(success)' | cut -d: -f1)
 if [ -z "$tab_guard_line" ] || [ -z "$unlist_dispatch_line" ] || \
    [ "$tab_guard_line" -ge "$unlist_dispatch_line" ]; then
@@ -143,6 +145,17 @@ for unlist_tab_test_contract in \
   'encodeURIComponent("https://message.test"), 14)'; do
   if ! grep -Fq "$unlist_tab_test_contract" "$BACKGROUND_TEST"; then
     printf '%s\n' "Missing blocked-page sender-tab regression: $unlist_tab_test_contract" >&2
+    exit 1
+  fi
+done
+
+for unlist_state_test_contract in \
+  'const writesBeforeUnownedTabUnlist = storedValues.length;' \
+  'sendBackgroundMessage({action: "background:unlistSite", tabId: 15,' \
+  'encodeURIComponent("https://message.test"), 15)' \
+  'assert.strictEqual(storedValues.length, writesBeforeUnownedTabUnlist);'; do
+  if ! grep -Fq "$unlist_state_test_contract" "$BACKGROUND_TEST"; then
+    printf '%s\n' "Missing blocked-page unlist state ownership regression: $unlist_state_test_contract" >&2
     exit 1
   fi
 done
@@ -163,6 +176,29 @@ for unlist_tab_plan_contract in \
   'No unpacked-extension browser flow was executed'; do
   if ! grep -Fq "$unlist_tab_plan_contract" "$UNLIST_TAB_OWNERSHIP_PLAN"; then
     printf '%s\n' "Unlist tab ownership plan must record completed verification: $unlist_tab_plan_contract" >&2
+    exit 1
+  fi
+done
+
+for unlist_state_doc in "$README" "$ROOT_DIR/SECURITY.md" "$ROOT_DIR/VISION.md" \
+  "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/AGENTS.md"; do
+  if ! tr '\n' ' ' < "$unlist_state_doc" | tr -s '[:space:]' ' ' | \
+      grep -Fq "Blocked-page unlist mutations also require the sender tab's current blocked-origin state to match the requested origin."; then
+    printf '%s\n' "$unlist_state_doc must document blocked-page state ownership." >&2
+    exit 1
+  fi
+done
+
+UNLIST_STATE_PLAN_FLAT=$(tr '\n' ' ' < "$UNLIST_STATE_OWNERSHIP_PLAN" | tr -s '[:space:]' ' ')
+for unlist_state_plan_contract in \
+  'status: implemented' \
+  "sender tab's current blocked-origin state" \
+  'same-extension, exact-URL, same-tab unlist message' \
+  'Require exact-head push and pull-request checks across Node 20, 22, and 24' \
+  'Seven isolated mutations were rejected' \
+  'remain pending until the implementation commit is pushed'; do
+  if ! printf '%s\n' "$UNLIST_STATE_PLAN_FLAT" | grep -Fq "$unlist_state_plan_contract"; then
+    printf '%s\n' "Unlist state ownership plan must preserve contract: $unlist_state_plan_contract" >&2
     exit 1
   fi
 done

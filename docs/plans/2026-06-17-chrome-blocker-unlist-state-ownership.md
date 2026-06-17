@@ -2,7 +2,7 @@
 title: Chrome Blocker Unlist State Ownership
 type: security
 date: 2026-06-17
-status: planned
+status: implemented
 execution: code
 ---
 
@@ -81,6 +81,20 @@ documented boundary fails the maintained gate.
   case, owned-tab success case, and documentation contract.
 - Audit the exact diff, generated artifacts, and credential-shaped additions.
 - Require exact-head push and pull-request checks across Node 20, 22, and 24.
+
+## Verification Results
+
+- Shell syntax, the focused background real-script suite, and the source
+  baseline passed.
+- Repository-root and external-directory `make check` passed all five real
+  extension-script VM suites.
+- Seven isolated mutations were rejected across state-guard removal, origin
+  plumbing, the unowned-tab fixture, storage-write protection, guard inversion,
+  README scope, and plan status.
+- The exact diff contains no generated extension artifacts or
+  credential-shaped additions.
+- Exact-head push and pull-request checks across Node 20, 22, and 24 remain
+  pending until the implementation commit is pushed.
 
 ## Risks
 

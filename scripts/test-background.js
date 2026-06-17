@@ -376,6 +376,16 @@ assert.deepStrictEqual(
   {ok: true}
 );
 assert.strictEqual(context.getTabState(14), "https://message.test");
+const writesBeforeUnownedTabUnlist = storedValues.length;
+assert.strictEqual(
+  sendBackgroundMessage({action: "background:unlistSite", tabId: 15,
+    blockedSite: "https://message.test/other"}, undefined,
+    "chrome-extension://test/blockedSite.html?blocked=" +
+      encodeURIComponent("https://message.test"), 15),
+  undefined
+);
+assert.strictEqual(storedValues.length, writesBeforeUnownedTabUnlist);
+assert.strictEqual(context.getTabState(14), "https://message.test");
 assert.strictEqual(
   sendBackgroundMessage({action: "background:unlistSite", tabId: 14,
     blockedSite: "javascript:alert(1)"}),

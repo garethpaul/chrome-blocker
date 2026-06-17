@@ -35,6 +35,7 @@ Priority:
 - Only the exact popup extension page may start the blocked-page unlist countdown.
 - Popup routes and blocked-page unlist routes use separate exact sender authorization.
 - Blocked-page unlist mutations require exact blocked-origin and sender-tab ownership.
+- Blocked-page unlist mutations also require the sender tab's current blocked-origin state to match the requested origin.
 - Content-script URL reads and redirects require exact popup sender and current-document origin ownership.
 - Keep blocked-page redirects scoped to the guarded unlist path
 - Keep popup actions scoped to a valid active tab id

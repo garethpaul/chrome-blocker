@@ -53,6 +53,7 @@ Helpful reports include:
 - Popup routes and blocked-page unlist routes use separate exact sender authorization.
 - Content-script URL reads and redirects require exact popup sender and current-document origin ownership.
 - Blocked-page unlist mutations require exact blocked-origin and sender-tab ownership.
+- Blocked-page unlist mutations also require the sender tab's current blocked-origin state to match the requested origin.
 
 ## Service and API Notes
 

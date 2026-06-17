@@ -1,5 +1,9 @@
 # Chrome Blocker Changes
 
+## 2026-06-17
+
+- Blocked-page unlist mutations also require the sender tab's current blocked-origin state to match the requested origin.
+
 ## 2026-06-15
 
 - Only the exact popup extension page may start the blocked-page unlist countdown.
