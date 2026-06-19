@@ -37,8 +37,9 @@ BACKGROUND_ROUTE_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-background
 UNLIST_TAB_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-unlist-tab-ownership.md"
 CONTENT_MESSAGE_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-content-message-ownership.md"
 UNLIST_STATE_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-17-chrome-blocker-unlist-state-ownership.md"
+BLOCKED_DOCUMENT_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-19-chrome-blocker-blocked-document-ownership.md"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$UNLIST_SENDER_PLAN" "$BACKGROUND_ROUTE_PLAN" "$UNLIST_TAB_OWNERSHIP_PLAN" "$CONTENT_MESSAGE_OWNERSHIP_PLAN" "$UNLIST_STATE_OWNERSHIP_PLAN" "$POPUP_TEST" "$CONTENT_SCRIPT_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$UNLIST_SENDER_PLAN" "$BACKGROUND_ROUTE_PLAN" "$UNLIST_TAB_OWNERSHIP_PLAN" "$CONTENT_MESSAGE_OWNERSHIP_PLAN" "$UNLIST_STATE_OWNERSHIP_PLAN" "$BLOCKED_DOCUMENT_OWNERSHIP_PLAN" "$POPUP_TEST" "$CONTENT_SCRIPT_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -117,6 +118,8 @@ for unlist_tab_source_contract in \
   'function hasTrustedBlockedPageState(sender, tabid, blockedOrigin)' \
   'isValidTabId(tabid) && sender && sender.tab &&' \
   'isValidTabId(sender.tab.id) && sender.tab.id === tabid &&' \
+  'sender.frameId === 0 && typeof sender.documentId === "string" &&' \
+  'tabBlockingDocumentMap[tabid] === sender.documentId &&' \
   'getTabState(tabid) === blockedOrigin' \
   '!hasTrustedBlockedPageState(sender, message.tabId, blockedPageOrigin)'; do
   if ! grep -Fq "$unlist_tab_source_contract" "$BACKGROUND"; then
@@ -139,12 +142,63 @@ if [ -z "$tab_guard_line" ] || [ -z "$unlist_dispatch_line" ] || \
 fi
 
 for unlist_tab_test_contract in \
-  'function sendBackgroundMessage(message, senderId, senderUrl, senderTabId)' \
+  'function sendBackgroundMessage(message, senderId, senderUrl, senderTabId,' \
   'sender.tab = {id: senderTabId};' \
+  'sender.frameId = senderFrameId;' \
+  'sender.documentId = senderDocumentId;' \
   'for (const senderTabId of [undefined, -1, 1.5, 15])' \
-  'encodeURIComponent("https://message.test"), 14)'; do
+  '{frameId: 1, documentId: "message-document"}' \
+  '{frameId: 0, documentId: "replacement-document"}'; do
   if ! grep -Fq "$unlist_tab_test_contract" "$BACKGROUND_TEST"; then
     printf '%s\n' "Missing blocked-page sender-tab regression: $unlist_tab_test_contract" >&2
+    exit 1
+  fi
+done
+
+for blocked_document_source_contract in \
+  'var tabBlockingDocumentMap = {};' \
+  'var pendingTabBlockingMap = {};' \
+  'function getBlockedPageOrigin(candidateUrl)' \
+  'pendingTabBlockingMap[details.tabId] === blockedOrigin' \
+  'setTabBlockingState(details.tabId, blockedOrigin, details.documentId);' \
+  'details.frameId !== 0' \
+  'function isTopLevelBlockedPage()' \
+  'if (!isTopLevelBlockedPage() || !isTrustedPopupSender(sender))'; do
+  if ! grep -Fq "$blocked_document_source_contract" "$BACKGROUND" "$BLOCKED_SITE"; then
+    printf '%s\n' "Missing blocked-document ownership contract: $blocked_document_source_contract" >&2
+    exit 1
+  fi
+done
+
+for blocked_document_test_contract in \
+  'documentId: "subframe-document"' \
+  'documentId: "blocked-document"' \
+  'documentId: "replacement-document"' \
+  'context.pendingTabBlockingMap[17], undefined' \
+  'context.window.top = {};' \
+  'assert.strictEqual(currentTabLookups, lookupsBeforeRejectedSenders);'; do
+  if ! grep -Fq "$blocked_document_test_contract" "$BACKGROUND_TEST" "$BLOCKED_SITE_TEST"; then
+    printf '%s\n' "Missing blocked-document ownership regression: $blocked_document_test_contract" >&2
+    exit 1
+  fi
+done
+
+for blocked_document_doc in "$README" "$ROOT_DIR/SECURITY.md" "$ROOT_DIR/VISION.md" \
+  "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/AGENTS.md"; do
+  if ! tr '\n' ' ' < "$blocked_document_doc" | tr -s '[:space:]' ' ' | \
+      grep -Fq "Blocked-page unlist mutations require a reserved top-level redirect and the exact committed document ID; subframes, stale documents, and replacement navigations fail closed."; then
+    printf '%s\n' "$blocked_document_doc must document committed blocked-document ownership." >&2
+    exit 1
+  fi
+done
+
+for blocked_document_plan_contract in \
+  'Status: Completed' \
+  'RED reproduced' \
+  'hostile mutations' \
+  'make check'; do
+  if ! grep -Fq "$blocked_document_plan_contract" "$BLOCKED_DOCUMENT_OWNERSHIP_PLAN"; then
+    printf '%s\n' "Blocked-document ownership plan must record completed evidence: $blocked_document_plan_contract" >&2
     exit 1
   fi
 done
@@ -209,7 +263,7 @@ for unlist_sender_source_contract in \
   'function isTrustedPopupSender(sender)' \
   'sender.id === chrome.runtime.id' \
   'sender.url === chrome.runtime.getURL("popup.html")' \
-  'if (!isTrustedPopupSender(sender))'; do
+  'if (!isTopLevelBlockedPage() || !isTrustedPopupSender(sender))'; do
   if ! grep -Fq "$unlist_sender_source_contract" "$BLOCKED_SITE"; then
     printf '%s\n' "Missing blocked-page popup sender guard: $unlist_sender_source_contract" >&2
     exit 1
@@ -229,7 +283,7 @@ for unlist_sender_test_contract in \
   fi
 done
 
-sender_guard_line=$(grep -nF 'if (!isTrustedPopupSender(sender))' "$BLOCKED_SITE" | cut -d: -f1)
+sender_guard_line=$(grep -nF 'if (!isTopLevelBlockedPage() || !isTrustedPopupSender(sender))' "$BLOCKED_SITE" | cut -d: -f1)
 tab_lookup_line=$(grep -nF 'withCurrentTab(function(tab) {' "$BLOCKED_SITE" | tail -n 1 | cut -d: -f1)
 if [ -z "$sender_guard_line" ] || [ -z "$tab_lookup_line" ] || \
    [ "$sender_guard_line" -ge "$tab_lookup_line" ]; then
@@ -266,9 +320,10 @@ fi
 for message_contract in \
   'function isTrustedPopupSender(sender)' \
   'sender.url === chrome.runtime.getURL("popup.html")' \
+  'function getBlockedPageOrigin(candidateUrl)' \
+  'candidateUrl.indexOf(blockedPageUrl + "?blocked=") !== 0' \
+  'candidateUrl.substring(blockedPageUrl.length)' \
   'function getTrustedBlockedPageOrigin(sender)' \
-  'sender.url.indexOf(blockedPageUrl + "?blocked=") !== 0' \
-  'getBlockedOriginFromSearch(sender.url.substring(blockedPageUrl.length))' \
   'sender.id === chrome.runtime.id' \
   'function handleBackgroundMessage(message, sender, sendResponse)' \
   'if ((popupAction && !isTrustedPopupSender(sender)) ||' \
@@ -604,8 +659,8 @@ if ! grep -Fq "requestMatchesBlockedSite(requestUrl, blockedSites[i])" "$BACKGRO
   exit 1
 fi
 
-if ! grep -Fq "setTabBlockingState(request.tabId, tabBlockingState)" "$BACKGROUND"; then
-  printf '%s\n' "Background state must use the webRequest tab id instead of selected tab state." >&2
+if ! grep -Fq "setPendingTabBlockingState(request.tabId, tabBlockingState)" "$BACKGROUND"; then
+  printf '%s\n' "Background redirect reservations must use the webRequest tab id." >&2
   exit 1
 fi
 
@@ -622,6 +677,14 @@ for integer_tab_contract in \
   'context.setTabBlockingState(Infinity'; do
   if ! grep -Fq "$integer_tab_contract" "$BACKGROUND" "$BACKGROUND_TEST"; then
     printf '%s\n' "Finite integer tab-id contract is missing: $integer_tab_contract" >&2
+    exit 1
+  fi
+done
+for ui_integer_tab_contract in \
+  'Math.floor(tab.id) === tab.id && tab.id >= 0;' \
+  'for (const tab of [null, {}, {id: -1}, {id: 1.5}, {id: Infinity}])'; do
+  if ! grep -Fq "$ui_integer_tab_contract" "$POPUP" "$BLOCKED_SITE" "$POPUP_TEST" "$BLOCKED_SITE_TEST"; then
+    printf '%s\n' "Popup/blocked-page finite tab-id contract is missing: $ui_integer_tab_contract" >&2
     exit 1
   fi
 done
@@ -648,15 +711,16 @@ if ! grep -Fq "if (isValidTabId(tabid))" "$BACKGROUND"; then
   exit 1
 fi
 
-if ! grep -Fq "setTabBlockingState(tabid, normalizedSite)" "$BACKGROUND" || \
+if ! grep -Fq "setPendingTabBlockingState(tabid, normalizedSite)" "$BACKGROUND" || \
    ! grep -Fq "clearTabBlockingStatesForOrigin(normalizedSite)" "$BACKGROUND"; then
-  printf '%s\n' "Background add/unlist paths must use centralized tab state helpers." >&2
+  printf '%s\n' "Background add/unlist paths must use centralized pending and committed state helpers." >&2
   exit 1
 fi
 
 if ! grep -Fq "function clearTabBlockingStatesForOrigin(blockedOrigin)" "$BACKGROUND" || \
    ! grep -Fq "Object.prototype.hasOwnProperty.call(tabBlockingMap, tabid)" "$BACKGROUND" || \
-   ! grep -Fq "tabBlockingMap[tabid] === blockedOrigin" "$BACKGROUND"; then
+   ! grep -Fq "tabBlockingMap[tabid] === blockedOrigin" "$BACKGROUND" || \
+   ! grep -Fq "pendingTabBlockingMap[pendingTabId] === blockedOrigin" "$BACKGROUND"; then
   printf '%s\n' "Global unlisting must clear only owned tab states for the matching origin." >&2
   exit 1
 fi
@@ -679,10 +743,10 @@ if ! grep -Fq "chrome.tabs.onRemoved.addListener(removeTabBlockingState)" "$BACK
   exit 1
 fi
 
-if ! grep -Fq "setTabBlockingState(details.tabId, 0)" "$BACKGROUND" || \
-   ! grep -Fq "setTabBlockingState(details.tabId, getTabState(details.replacedTabId))" "$BACKGROUND" || \
+if ! grep -Fq "setTabBlockingState(details.tabId, blockedOrigin, details.documentId)" "$BACKGROUND" || \
+   ! grep -Fq "setTabBlockingState(details.tabId, getTabState(details.replacedTabId)," "$BACKGROUND" || \
    ! grep -Fq "removeTabBlockingState(details.replacedTabId)" "$BACKGROUND"; then
-  printf '%s\n' "Background navigation and replacement paths must use centralized tab-state helpers." >&2
+  printf '%s\n' "Background navigation and replacement paths must preserve committed document ownership." >&2
   exit 1
 fi
 
@@ -768,7 +832,7 @@ if ! grep -Fq "function withCurrentTab(callback)" "$BLOCKED_SITE"; then
   exit 1
 fi
 
-if ! grep -Fq 'if (!tab || typeof tab.id !== "number")' "$BLOCKED_SITE"; then
+if ! grep -Fq 'if (!hasValidTabId(tab))' "$BLOCKED_SITE"; then
   printf '%s\n' "Blocked page current-tab lookup must guard missing or invalid tab ids." >&2
   exit 1
 fi
@@ -855,16 +919,16 @@ if ! grep -Fq 'assert.strictEqual(context.getTabState(12), 0);' "$BACKGROUND_TES
   exit 1
 fi
 
-if ! grep -Fq 'listeners.onCommitted({tabId: 8});' "$BACKGROUND_TEST" || \
+if ! grep -Fq 'listeners.onCommitted({tabId: 8, frameId: 0' "$BACKGROUND_TEST" || \
    ! grep -Fq 'listeners.onTabReplaced({tabId: 9, replacedTabId: 7});' "$BACKGROUND_TEST" || \
    ! grep -Fq 'listeners.onRemoved(9);' "$BACKGROUND_TEST"; then
   printf '%s\n' "Background tests must execute tab initialization, replacement, and cleanup listeners." >&2
   exit 1
 fi
 
-if [ "$(grep -Fc 'tabId: -1' "$BACKGROUND_TEST")" -ne 1 ] || \
-   [ "$(grep -Fc 'type: "main_frame"' "$BACKGROUND_TEST")" -ne 6 ] || \
-   [ "$(grep -Fc 'type: "sub_frame"' "$BACKGROUND_TEST")" -ne 1 ]; then
+if [ "$(grep -Fc 'tabId: -1' "$BACKGROUND_TEST")" -lt 1 ] || \
+   [ "$(grep -Fc 'type: "main_frame"' "$BACKGROUND_TEST")" -lt 6 ] || \
+   [ "$(grep -Fc 'type: "sub_frame"' "$BACKGROUND_TEST")" -lt 1 ]; then
   printf '%s\n' "Background tests must preserve invalid-tab, subframe, and valid main-frame fixtures." >&2
   exit 1
 fi

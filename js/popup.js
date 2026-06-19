@@ -1,7 +1,8 @@
 var tabState = 0;
 
 function hasValidTabId(tab) {
-  return tab && typeof tab.id === "number";
+  return !!tab && typeof tab.id === "number" && isFinite(tab.id) &&
+      Math.floor(tab.id) === tab.id && tab.id >= 0;
 }
 
 function getCurrentTab(callback) {

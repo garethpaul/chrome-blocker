@@ -76,6 +76,7 @@ Only the exact popup extension page may start the blocked-page unlist countdown.
 Popup routes and blocked-page unlist routes use separate exact sender authorization.
 Blocked-page unlist mutations require exact blocked-origin and sender-tab ownership.
 Blocked-page unlist mutations also require the sender tab's current blocked-origin state to match the requested origin.
+Blocked-page unlist mutations require a reserved top-level redirect and the exact committed document ID; subframes, stale documents, and replacement navigations fail closed.
 The popup behavior test executes the real popup script with mocked Chrome and
 DOM APIs and covers background state lookup, add, clear, unlist, and redirect
 messages.
@@ -131,6 +132,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Chrome Blocker accepts only finite integer tab IDs at runtime boundaries.
 - Background navigation, replacement, and removal paths use centralized tab state helpers,
   with executable Node coverage for state initialization, transfer, and cleanup.
+- A tab becomes blocked state only after the reserved blocked-page redirect commits
+  in the top-level frame; unrelated top-level commits clear pending and committed ownership.
 - A global unlisting clears matching state across every tracked tab while
   preserving tabs blocked by other origins.
 - The blocked page validates the current tab before unlisting a site or showing

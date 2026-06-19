@@ -4,6 +4,8 @@ var blockedSitesHydrationFailed = false;
 var pendingBlockedListMutations = [];
 var blockedListMutationInProgress = false;
 var tabBlockingMap = {};
+var tabBlockingDocumentMap = {};
+var pendingTabBlockingMap = {};
 
 chrome.storage.local.get("blocked", function(items) {
   if (chrome.runtime.lastError) {
@@ -86,7 +88,7 @@ function addBlockedSite(tabid, blockedSite, completion) {
 
   runBlockedListMutation(function(done) {
     if (blockedSites.indexOf(normalizedSite) !== -1) {
-      setTabBlockingState(tabid, normalizedSite);
+      setPendingTabBlockingState(tabid, normalizedSite);
       done(true);
       return;
     }
@@ -94,7 +96,7 @@ function addBlockedSite(tabid, blockedSite, completion) {
     var nextBlockedSites = blockedSites.slice();
     nextBlockedSites.push(normalizedSite);
     persistBlockedSites(nextBlockedSites, function() {
-      setTabBlockingState(tabid, normalizedSite);
+      setPendingTabBlockingState(tabid, normalizedSite);
     }, done);
   }, completion);
 }
@@ -123,6 +125,8 @@ function clearBlacklist(completion) {
   runBlockedListMutation(function(done) {
     persistBlockedSites([], function() {
       tabBlockingMap = {};
+      tabBlockingDocumentMap = {};
+      pendingTabBlockingMap = {};
     }, done);
   }, completion);
 }
@@ -146,15 +150,28 @@ function isValidTabId(tabid) {
       Math.floor(tabid) === tabid && tabid >= 0;
 }
 
-function setTabBlockingState(tabid, tabBlockingState) {
+function setTabBlockingState(tabid, tabBlockingState, documentId) {
   if (isValidTabId(tabid)) {
     tabBlockingMap[tabid] = tabBlockingState;
+    if (typeof documentId === "string" && documentId !== "") {
+      tabBlockingDocumentMap[tabid] = documentId;
+    } else {
+      delete tabBlockingDocumentMap[tabid];
+    }
+  }
+}
+
+function setPendingTabBlockingState(tabid, tabBlockingState) {
+  if (isValidTabId(tabid)) {
+    pendingTabBlockingMap[tabid] = tabBlockingState;
   }
 }
 
 function removeTabBlockingState(tabid) {
   if (isValidTabId(tabid)) {
     delete tabBlockingMap[tabid];
+    delete tabBlockingDocumentMap[tabid];
+    delete pendingTabBlockingMap[tabid];
   }
 }
 
@@ -163,6 +180,13 @@ function clearTabBlockingStatesForOrigin(blockedOrigin) {
     if (Object.prototype.hasOwnProperty.call(tabBlockingMap, tabid) &&
         tabBlockingMap[tabid] === blockedOrigin) {
       delete tabBlockingMap[tabid];
+      delete tabBlockingDocumentMap[tabid];
+    }
+  }
+  for (var pendingTabId in pendingTabBlockingMap) {
+    if (Object.prototype.hasOwnProperty.call(pendingTabBlockingMap, pendingTabId) &&
+        pendingTabBlockingMap[pendingTabId] === blockedOrigin) {
+      delete pendingTabBlockingMap[pendingTabId];
     }
   }
 }
@@ -172,20 +196,37 @@ function isTrustedPopupSender(sender) {
       sender.url === chrome.runtime.getURL("popup.html");
 }
 
-function getTrustedBlockedPageOrigin(sender) {
+function getBlockedPageOrigin(candidateUrl) {
   var blockedPageUrl = chrome.runtime.getURL("blockedSite.html");
-  if (!sender || sender.id !== chrome.runtime.id ||
-      typeof sender.url !== "string" ||
-      sender.url.indexOf(blockedPageUrl + "?blocked=") !== 0) {
+  if (typeof candidateUrl !== "string" ||
+      candidateUrl.indexOf(blockedPageUrl + "?blocked=") !== 0) {
     return "";
   }
 
-  return getBlockedOriginFromSearch(sender.url.substring(blockedPageUrl.length));
+  var blockedOrigin = getBlockedOriginFromSearch(
+      candidateUrl.substring(blockedPageUrl.length));
+  if (blockedOrigin === "" || candidateUrl !== blockedPageUrl +
+      "?blocked=" + encodeURIComponent(blockedOrigin)) {
+    return "";
+  }
+
+  return blockedOrigin;
+}
+
+function getTrustedBlockedPageOrigin(sender) {
+  if (!sender || sender.id !== chrome.runtime.id) {
+    return "";
+  }
+
+  return getBlockedPageOrigin(sender.url);
 }
 
 function hasTrustedBlockedPageState(sender, tabid, blockedOrigin) {
   return isValidTabId(tabid) && sender && sender.tab &&
       isValidTabId(sender.tab.id) && sender.tab.id === tabid &&
+      sender.frameId === 0 && typeof sender.documentId === "string" &&
+      sender.documentId !== "" &&
+      tabBlockingDocumentMap[tabid] === sender.documentId &&
       getTabState(tabid) === blockedOrigin;
 }
 
@@ -242,21 +283,32 @@ function requestChecker(request) {
   }
 
   var tabBlockingState = findBlockedSite(request.url);
-  setTabBlockingState(request.tabId, tabBlockingState);
 
   if (tabBlockingState !== 0) {
+    setPendingTabBlockingState(request.tabId, tabBlockingState);
     var redirectUrl = chrome.runtime.getURL(
         "blockedSite.html?blocked=" + encodeURIComponent(tabBlockingState));
     return { redirectUrl: redirectUrl };
   }
+
+  removeTabBlockingState(request.tabId);
 }
 
 chrome.webRequest.onBeforeRequest.addListener(
   requestChecker, {urls: ["http://*/*", "https://*/*"]}, ["blocking"]);
 
 function updateMapping(details) {
-  if (details && isValidTabId(details.tabId) && !(details.tabId in tabBlockingMap)) {
-    setTabBlockingState(details.tabId, 0);
+  if (!details || !isValidTabId(details.tabId) || details.frameId !== 0) {
+    return;
+  }
+
+  var blockedOrigin = getBlockedPageOrigin(details.url);
+  if (blockedOrigin !== "" &&
+      pendingTabBlockingMap[details.tabId] === blockedOrigin) {
+    setTabBlockingState(details.tabId, blockedOrigin, details.documentId);
+    delete pendingTabBlockingMap[details.tabId];
+  } else {
+    removeTabBlockingState(details.tabId);
   }
 }
 
@@ -266,7 +318,13 @@ function updateReplacedTabMapping(details) {
   }
 
   if (isValidTabId(details.replacedTabId)) {
-    setTabBlockingState(details.tabId, getTabState(details.replacedTabId));
+    setTabBlockingState(details.tabId, getTabState(details.replacedTabId),
+        tabBlockingDocumentMap[details.replacedTabId]);
+    if (Object.prototype.hasOwnProperty.call(
+        pendingTabBlockingMap, details.replacedTabId)) {
+      setPendingTabBlockingState(
+          details.tabId, pendingTabBlockingMap[details.replacedTabId]);
+    }
     removeTabBlockingState(details.replacedTabId);
   } else {
     updateMapping(details);

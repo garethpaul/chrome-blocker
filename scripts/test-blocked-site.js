@@ -88,6 +88,7 @@ const context = {
   },
   $: element
 };
+context.window.top = context.window;
 
 vm.createContext(context);
 vm.runInContext(
@@ -103,6 +104,10 @@ vm.runInContext(
 
 assert.strictEqual(typeof messageListener, "function");
 assert.strictEqual(elementState["#blockMessage"].textValue, "https://example.com has been blacklisted.");
+for (const tab of [null, {}, {id: -1}, {id: 1.5}, {id: Infinity}]) {
+  assert.strictEqual(context.hasValidTabId(tab), false);
+}
+assert.strictEqual(context.hasValidTabId({id: 0}), true);
 
 const rejectedMessages = [
   7,
@@ -139,6 +144,15 @@ for (const sender of rejectedSenders) {
 }
 
 assert.strictEqual(currentTabLookups, lookupsBeforeRejectedSenders);
+
+context.window.top = {};
+messageListener({
+  action: "beginUnlist",
+  tabId: 7,
+  blockedSite: "https://example.com"
+}, popupSender, function() {});
+assert.strictEqual(currentTabLookups, lookupsBeforeRejectedSenders);
+context.window.top = context.window;
 
 assert.deepStrictEqual(elementState["#unlistModal"].modals, []);
 assert.strictEqual(intervalStarts, 0);

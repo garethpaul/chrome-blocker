@@ -1,5 +1,11 @@
 # Chrome Blocker Changes
 
+## 2026-06-19
+
+- Blocked-page unlist mutations require a reserved top-level redirect and the exact committed document ID; subframes, stale documents, and replacement navigations fail closed.
+- Pending redirect ownership now clears on navigation, global unlist, global clear,
+  and tab removal, while popup and blocked-page tab IDs require finite non-negative integers.
+
 ## 2026-06-17
 
 - Blocked-page unlist mutations also require the sender tab's current blocked-origin state to match the requested origin.

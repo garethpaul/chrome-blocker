@@ -36,6 +36,7 @@ Priority:
 - Popup routes and blocked-page unlist routes use separate exact sender authorization.
 - Blocked-page unlist mutations require exact blocked-origin and sender-tab ownership.
 - Blocked-page unlist mutations also require the sender tab's current blocked-origin state to match the requested origin.
+- Blocked-page unlist mutations require a reserved top-level redirect and the exact committed document ID; subframes, stale documents, and replacement navigations fail closed.
 - Content-script URL reads and redirects require exact popup sender and current-document origin ownership.
 - Keep blocked-page redirects scoped to the guarded unlist path
 - Keep popup actions scoped to a valid active tab id

@@ -38,8 +38,10 @@ transferred to a different extension implementation.
 | Load unpacked extension | Chrome accepts the exact-head repository or records a Manifest V2 support blocker. | `not run` | `not run` |
 | Empty startup hydration | The popup and navigation listener remain closed until storage hydration completes. | `not run` | `not run` |
 | Popup add site | Adding a synthetic host persists one normalized, deduplicated rule after acknowledgement. | `not run` | `not run` |
-| Blocked navigation | A blocked main-frame HTTP(S) navigation redirects to the extension page with an encoded original URL. | `not run` | `not run` |
-| Blocked-page unlist | Unlisting affects only the current finite integer tab and resumes the original synthetic URL after acknowledgement. | `not run` | `not run` |
+| Blocked navigation | A blocked main-frame HTTP(S) navigation reserves ownership, redirects to the extension page, and exposes blocked state only after the top-level blocked document commits. | `not run` | `not run` |
+| Blocked-page unlist | Unlisting requires the current finite integer tab, frame 0, exact committed document ID, and matching blocked origin before resuming the original synthetic URL after acknowledgement. | `not run` | `not run` |
+| Embedded blocked page | A blocked page loaded as a child frame cannot start the countdown or authorize an unlist mutation. | `not run` | `not run` |
+| Replacement navigation | Replacing or navigating away from the committed blocked document invalidates its unlist authority. | `not run` | `not run` |
 | Popup remove site | Removing a rule persists before the popup reports success and later navigation remains allowed. | `not run` | `not run` |
 | Clear block list | Clear persists an empty list and removes per-tab block state without stale redirects. | `not run` | `not run` |
 | Storage mutation failure | Failed persistence reports failure and does not present an uncommitted mutation as successful. | `not run` | `not run` |

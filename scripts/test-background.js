@@ -158,8 +158,9 @@ assert.deepStrictEqual(plain(queuedMutationHarness.storedValues), [
 ]);
 queuedMutationHarness.finishStorageWrite();
 assert.strictEqual(queuedMutationResult, true);
+assert.strictEqual(queuedMutationHarness.context.getTabState(5), 0);
 assert.strictEqual(
-  queuedMutationHarness.context.getTabState(5),
+  queuedMutationHarness.context.pendingTabBlockingMap[5],
   "https://queued.test"
 );
 
@@ -201,6 +202,7 @@ failedWriteHarness.finishStorageWrite({message: "write unavailable"});
 assert.deepStrictEqual(failedWriteResponse, {ok: false});
 assert.deepStrictEqual(plain(failedWriteHarness.context.blockedSites), []);
 assert.strictEqual(failedWriteHarness.context.getTabState(21), 0);
+assert.strictEqual(failedWriteHarness.context.pendingTabBlockingMap[21], undefined);
 
 const hydrationMessageHarness = createBackgroundHarness({deferStorageWrites: true});
 let hydrationMessageResponse;
@@ -280,6 +282,7 @@ assert.strictEqual(
 assert.deepStrictEqual(
   plain(listeners.onBeforeRequest({
     tabId: 7,
+    frameId: 0,
     type: "main_frame",
     url: "https://example.com/private"
   })),
@@ -302,7 +305,59 @@ assert.deepStrictEqual(
       encodeURIComponent("https://example.com")
   }
 );
+assert.strictEqual(context.getTabState(7), 0);
+
+listeners.onCommitted({
+  tabId: 7,
+  frameId: 2,
+  documentId: "subframe-document",
+  url: "chrome-extension://test/blockedSite.html?blocked=" +
+    encodeURIComponent("https://example.com")
+});
+assert.strictEqual(context.getTabState(7), 0);
+
+listeners.onCommitted({
+  tabId: 7,
+  frameId: 0,
+  documentId: "blocked-document",
+  url: "chrome-extension://test/blockedSite.html?blocked=" +
+    encodeURIComponent("https://example.com")
+});
 assert.strictEqual(context.getTabState(7), "https://example.com");
+
+assert.deepStrictEqual(
+  plain(listeners.onBeforeRequest({
+    tabId: 16,
+    frameId: 0,
+    type: "main_frame",
+    url: "https://example.com/private"
+  })),
+  {
+    redirectUrl: "chrome-extension://test/blockedSite.html?blocked=" +
+      encodeURIComponent("https://example.com")
+  }
+);
+listeners.onCommitted({
+  tabId: 16,
+  frameId: 0,
+  documentId: "owned-document",
+  url: "chrome-extension://test/blockedSite.html?blocked=" +
+    encodeURIComponent("https://example.com")
+});
+listeners.onCommitted({
+  tabId: 16,
+  frameId: 3,
+  documentId: "child-document",
+  url: "https://child.test"
+});
+assert.strictEqual(context.getTabState(16), "https://example.com");
+listeners.onCommitted({
+  tabId: 16,
+  frameId: 0,
+  documentId: "replacement-document",
+  url: "chrome://newtab/"
+});
+assert.strictEqual(context.getTabState(16), 0);
 
 assert.strictEqual(
   listeners.onBeforeRequest({
@@ -314,7 +369,8 @@ assert.strictEqual(
 );
 assert.strictEqual(context.getTabState(6), 0);
 
-function sendBackgroundMessage(message, senderId, senderUrl, senderTabId) {
+function sendBackgroundMessage(message, senderId, senderUrl, senderTabId,
+    senderFrameId, senderDocumentId) {
   let response;
   const sender = {
     id: senderId || "test-extension",
@@ -322,6 +378,12 @@ function sendBackgroundMessage(message, senderId, senderUrl, senderTabId) {
   };
   if (senderTabId !== undefined) {
     sender.tab = {id: senderTabId};
+  }
+  if (senderFrameId !== undefined) {
+    sender.frameId = senderFrameId;
+  }
+  if (senderDocumentId !== undefined) {
+    sender.documentId = senderDocumentId;
   }
   listeners.onMessage(message, sender, function(value) {
     response = plain(value);
@@ -375,6 +437,14 @@ assert.deepStrictEqual(
     blockedSite: "https://message.test/path"}),
   {ok: true}
 );
+assert.strictEqual(context.getTabState(14), 0);
+listeners.onCommitted({
+  tabId: 14,
+  frameId: 0,
+  documentId: "message-document",
+  url: "chrome-extension://test/blockedSite.html?blocked=" +
+    encodeURIComponent("https://message.test")
+});
 assert.strictEqual(context.getTabState(14), "https://message.test");
 const writesBeforeUnownedTabUnlist = storedValues.length;
 assert.strictEqual(
@@ -410,22 +480,46 @@ for (const senderTabId of [undefined, -1, 1.5, 15]) {
     sendBackgroundMessage({action: "background:unlistSite", tabId: 14,
       blockedSite: "https://message.test/other"}, undefined,
       "chrome-extension://test/blockedSite.html?blocked=" +
-        encodeURIComponent("https://message.test"), senderTabId),
+        encodeURIComponent("https://message.test"), senderTabId, 0,
+      "message-document"),
     undefined
   );
   assert.strictEqual(context.getTabState(14), "https://message.test");
 }
+for (const senderIdentity of [
+  {frameId: 1, documentId: "message-document"},
+  {frameId: 0, documentId: undefined},
+  {frameId: 0, documentId: "replacement-document"}
+]) {
+  assert.strictEqual(
+    sendBackgroundMessage({action: "background:unlistSite", tabId: 14,
+      blockedSite: "https://message.test/other"}, undefined,
+      "chrome-extension://test/blockedSite.html?blocked=" +
+        encodeURIComponent("https://message.test"), 14,
+      senderIdentity.frameId, senderIdentity.documentId),
+    undefined
+  );
+  assert.strictEqual(context.getTabState(14), "https://message.test");
+}
+context.addBlockedSite(17, "https://message.test/queued");
+assert.strictEqual(
+  context.pendingTabBlockingMap[17],
+  "https://message.test"
+);
 assert.deepStrictEqual(
   sendBackgroundMessage({action: "background:unlistSite", tabId: 14,
     blockedSite: "https://message.test/other"}, undefined,
     "chrome-extension://test/blockedSite.html?blocked=" +
-      encodeURIComponent("https://message.test"), 14),
+      encodeURIComponent("https://message.test"), 14, 0,
+    "message-document"),
   {ok: true}
 );
 assert.strictEqual(context.getTabState(14), 0);
+assert.strictEqual(context.pendingTabBlockingMap[17], undefined);
 
 assert.strictEqual(typeof listeners.onCommitted, "function");
-listeners.onCommitted({tabId: 8});
+listeners.onCommitted({tabId: 8, frameId: 0, documentId: "allowed-document",
+  url: "https://allowed.test"});
 assert.strictEqual(context.getTabState(8), 0);
 
 listeners.onTabReplaced({tabId: 9, replacedTabId: 7});
@@ -441,6 +535,19 @@ assert.strictEqual(context.getTabState(9), 0);
 context.addBlockedSite(11, "https://example.com/path");
 context.addBlockedSite(12, "https://example.com/another");
 context.addBlockedSite(13, "https://other.test/path");
+for (const blockedTab of [
+  {tabId: 11, origin: "https://example.com", documentId: "example-document-11"},
+  {tabId: 12, origin: "https://example.com", documentId: "example-document-12"},
+  {tabId: 13, origin: "https://other.test", documentId: "other-document-13"}
+]) {
+  listeners.onCommitted({
+    tabId: blockedTab.tabId,
+    frameId: 0,
+    documentId: blockedTab.documentId,
+    url: "chrome-extension://test/blockedSite.html?blocked=" +
+      encodeURIComponent(blockedTab.origin)
+  });
+}
 assert.strictEqual(context.getTabState(11), "https://example.com");
 assert.strictEqual(context.getTabState(12), "https://example.com");
 assert.strictEqual(context.getTabState(13), "https://other.test");

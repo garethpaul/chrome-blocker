@@ -70,6 +70,11 @@ for (const relativePath of ["js/urlRules.js", "js/popup.js"]) {
   );
 }
 
+for (const tab of [null, {}, {id: -1}, {id: 1.5}, {id: Infinity}]) {
+  assert.strictEqual(context.hasValidTabId(tab), false);
+}
+assert.strictEqual(context.hasValidTabId({id: 0}), true);
+
 assert.deepStrictEqual(runtimeMessages.shift(), {
   action: "background:getTabState",
   tabId: 7
