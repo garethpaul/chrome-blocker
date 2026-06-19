@@ -9,9 +9,14 @@ var content = $("#countdown");
 var i = 15;
 var interval = 0;
 
+function hasValidTabId(tab) {
+  return !!tab && typeof tab.id === "number" && isFinite(tab.id) &&
+      Math.floor(tab.id) === tab.id && tab.id >= 0;
+}
+
 function withCurrentTab(callback) {
   chrome.tabs.getCurrent(function(tab) {
-    if (!tab || typeof tab.id !== "number") {
+    if (!hasValidTabId(tab)) {
       return;
     }
 
@@ -28,8 +33,15 @@ function updateCountdown() {
   if (i == 0) {
     clearInterval(interval);
     withCurrentTab(function(tab) {
-      chrome.extension.getBackgroundPage().unlistSite(tab.id, site);
-      window.location.href = site;
+      chrome.runtime.sendMessage({
+        action: "background:unlistSite",
+        tabId: tab.id,
+        blockedSite: site
+      }, function(response) {
+        if (!chrome.runtime.lastError && response && response.ok === true) {
+          window.location.href = site;
+        }
+      });
     });
   }
 }
@@ -56,13 +68,37 @@ function hideModal() {
   $("#unlistModal").modal("hide");
 }
 
+function isValidUnlistMessage(message, tab) {
+  if (site === "" || !message || typeof message !== "object") {
+    return false;
+  }
+
+  return message.action === "beginUnlist" &&
+      hasValidTabId({id: message.tabId}) &&
+      tab.id === message.tabId &&
+      normalizeBlockedOrigin(message.blockedSite) === site;
+}
+
+function isTrustedPopupSender(sender) {
+  return sender && sender.id === chrome.runtime.id &&
+      sender.url === chrome.runtime.getURL("popup.html");
+}
+
+function isTopLevelBlockedPage() {
+  return window.top === window;
+}
+
 $("#unlistModal").on('hidden', modalHidden);
 $("#cancelUnlist").click(hideModal);
 
 chrome.runtime.onMessage.addListener(
     function(message, sender, sendResponse) {
+  if (!isTopLevelBlockedPage() || !isTrustedPopupSender(sender)) {
+    return;
+  }
+
   withCurrentTab(function(tab) {
-    if (site !== "" && tab.id == message) {
+    if (isValidUnlistMessage(message, tab)) {
       $("#unlistModal").modal("show");
       beginCountdown();
     }

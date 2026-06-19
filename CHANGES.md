@@ -1,5 +1,54 @@
 # Chrome Blocker Changes
 
+## 2026-06-19
+
+- Blocked-page unlist mutations require a reserved top-level redirect and the exact committed document ID; subframes, stale documents, and replacement navigations fail closed.
+- Pending redirect ownership now clears on navigation, global unlist, global clear,
+  and tab removal, while popup and blocked-page tab IDs require finite non-negative integers.
+- Verified exact blocked-document ownership in an isolated Chromium 133 profile.
+
+## 2026-06-17
+
+- Blocked-page unlist mutations also require the sender tab's current blocked-origin state to match the requested origin.
+
+## 2026-06-15
+
+- Only the exact popup extension page may start the blocked-page unlist countdown.
+- Popup routes and blocked-page unlist routes use separate exact sender authorization.
+- Blocked-page unlist mutations require exact blocked-origin and sender-tab ownership.
+- Content-script URL reads and redirects require exact popup sender and current-document origin ownership.
+
+## 2026-06-14
+
+- Added an exact-head Chrome browser verification matrix with privacy-safe
+  evidence fields and every live-extension row explicitly unexecuted.
+- Chrome Blocker accepts only finite integer tab IDs at runtime boundaries.
+- Replaced popup and blocked-page `getBackgroundPage()` calls with validated
+  same-extension runtime messages for state reads and block-list mutations.
+- Added executable popup coverage and required acknowledged background unlist
+  mutations before the blocked page returns to the original site.
+- Background block-list mutations are serialized and acknowledged only after
+  storage persistence succeeds.
+
+## 2026-06-13
+
+- Updated successful startup hydration to replay queued block-list mutations,
+  preserving add, unlist, and clear actions while dropping queued actions on
+  storage failure.
+- Closed the asynchronous block-list startup interval by canceling valid
+  main-frame requests until successful local-storage hydration, while preserving
+  ignored invalid request classes and normal post-hydration behavior.
+- Replaced raw numeric popup unlist broadcasts with typed runtime requests
+  containing the active tab id and normalized blocked origin.
+- Rejected malformed, wrong-action, wrong-tab, and wrong-origin unlist messages
+  before showing the blocked-page countdown modal or starting its timer.
+- Added VM coverage for the blocked-page runtime listener and wired it into the
+  repository test and static verification gates.
+- Removed stale blocked state from every matching tab when an origin is
+  globally unlisted, while preserving state for other blocked origins.
+- Rejected invalid unlist origins before storage or tab-state mutation and
+  added executable multi-tab regression coverage.
+
 ## 2026-06-12
 
 - Disabled checkout credential persistence in the canonical Node matrix and

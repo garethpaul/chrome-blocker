@@ -58,6 +58,8 @@ make check
 scripts/check-baseline.sh
 node scripts/test-url-rules.js
 node scripts/test-background.js
+node scripts/test-blocked-site.js
+node scripts/test-popup.js
 ```
 
 The URL-rule baseline verifies normalized HTTP(S) origin matching, rejected
@@ -65,12 +67,27 @@ lookalike hosts, rejected credential-bearing blocker URLs, block-list
 deduplication, encoded redirect parameters for `blockedSite.html`, and scoped
 manifest host permissions.
 The background behavior test executes the real request listener with mocked
-Chrome APIs and covers invalid tab ids, subframes, valid redirects, and tab
-state updates.
+Chrome APIs and covers deferred and failed storage hydration, invalid tab ids,
+subframes, blocked redirects, allowed navigation, and tab state updates.
+The blocked-page behavior test executes the real runtime listener with mocked
+Chrome and DOM APIs and covers rejected unlist messages plus the accepted
+same-tab, same-origin request.
+Only the exact popup extension page may start the blocked-page unlist countdown.
+Popup routes and blocked-page unlist routes use separate exact sender authorization.
+Blocked-page unlist mutations require exact blocked-origin and sender-tab ownership.
+Blocked-page unlist mutations also require the sender tab's current blocked-origin state to match the requested origin.
+Blocked-page unlist mutations require a reserved top-level redirect and the exact committed document ID; subframes, stale documents, and replacement navigations fail closed.
+The popup behavior test executes the real popup script with mocked Chrome and
+DOM APIs and covers background state lookup, add, clear, unlist, and redirect
+messages.
 GitHub Actions runs `make check` on Node 20, 22, and 24 for pushes, pull
 requests, and manual dispatches. The workflow uses commit-pinned actions,
 read-only repository access, and a bounded runtime.
 The job does not persist checkout credentials after source retrieval.
+
+Use [`BROWSER_VERIFICATION.md`](BROWSER_VERIFICATION.md) to record exact-head
+unpacked-extension evidence. Keep unavailable Chrome scenarios as explicit unexecuted rows
+rather than treating Node VM or static checks as installed browser execution.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -95,16 +112,35 @@ When the required SDK or runtime is unavailable, use static checks and source re
   non-tab navigation ids.
 - Non-tab main-frame requests are ignored before URL matching or redirect
   construction, keeping blocking behavior scoped to real browser tabs.
+- The background page cancels valid main-frame navigation until local block-list hydration succeeds;
+  storage read failures remain closed, and canceled URLs are neither logged nor
+  retained for replay.
+- Successful startup hydration must replay queued block-list mutations after the
+  loaded snapshot is installed; failed hydration drops queued actions while
+  navigation remains fail closed.
 - The content-script redirect messages are normalized before constructing
   `blockedSite.html` URLs.
-- The background page owns block-list storage writes; the popup delegates new
+- Content-script URL reads and redirects require exact popup sender and current-document origin ownership.
+- The background context owns block-list storage writes; the popup delegates new
   blocked origins instead of writing the same list twice.
+- Background block-list mutations are serialized and acknowledged only after
+  storage persistence succeeds.
+- Popup and blocked-site pages use validated same-extension runtime messages
+  instead of direct access to the background page's global object.
 - The background add and unblock paths use centralized tab state writes so
   invalid tab ids cannot create stray per-tab entries.
+- Chrome Blocker accepts only finite integer tab IDs at runtime boundaries.
 - Background navigation, replacement, and removal paths use centralized tab state helpers,
   with executable Node coverage for state initialization, transfer, and cleanup.
+- A tab becomes blocked state only after the reserved blocked-page redirect commits
+  in the top-level frame; unrelated top-level commits clear pending and committed ownership.
+- A global unlisting clears matching state across every tracked tab while
+  preserving tabs blocked by other origins.
 - The blocked page validates the current tab before unlisting a site or showing
   the unblock countdown.
+- Popup unlist requests use a typed runtime message, and the blocked page
+  requires a matching numeric tab id and normalized blocked origin before the
+  countdown can begin.
 - The blocked page redirects back only after the guarded unlist path runs.
 - The popup validates the active tab id before messaging content scripts or
   reading background tab state.
@@ -133,10 +169,16 @@ When the required SDK or runtime is unavailable, use static checks and source re
   credential-bearing blocker URL guard.
 - See `docs/plans/2026-06-10-ci-baseline.md` for the hosted GitHub Actions
   baseline.
+- See `docs/plans/2026-06-13-chrome-blocker-global-unlist-state.md` for the
+  origin-wide tab cleanup boundary.
+- See `docs/plans/2026-06-13-chrome-blocker-unlist-message-contract.md` for the
+  typed popup-to-blocked-page unlist request boundary.
 - See `docs/plans/2026-06-10-chrome-blocker-non-tab-request-guard.md` for the
   background interception boundary and executable listener test.
+- See `docs/plans/2026-06-13-chrome-blocker-startup-hydration-gate.md` for the
+  fail-closed background startup boundary.
 - A Manifest V3 migration remains separate work because it requires replacing
-  blocking `webRequest` behavior and persistent background-page calls, not just
+  blocking `webRequest` behavior and the persistent background lifecycle, not just
   changing the manifest version.
 
 ## Contributing

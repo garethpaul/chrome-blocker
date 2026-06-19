@@ -37,6 +37,24 @@ Helpful reports include:
   actions, read-only repository access, and bounded execution so URL-rule,
   tab-state, host-permission, and redirect guardrails stay enforced before
   merge.
+- Main-frame interception remains fail closed while local block-list storage is unresolved;
+  startup-window URLs are canceled without logging, persistence, or hidden
+  replay.
+- Successful hydration must replay queued block-list mutations after the trusted
+  snapshot is installed; storage failure drops queued actions rather than
+  applying them to unknown state.
+- Background state mutations accept only validated same-extension runtime
+  messages with action-specific tab and origin checks; extension pages do not
+  access the background global object directly.
+- Background block-list mutations are serialized and acknowledged only after
+  storage persistence succeeds.
+- Chrome Blocker accepts only finite integer tab IDs at runtime boundaries.
+- Only the exact popup extension page may start the blocked-page unlist countdown.
+- Popup routes and blocked-page unlist routes use separate exact sender authorization.
+- Content-script URL reads and redirects require exact popup sender and current-document origin ownership.
+- Blocked-page unlist mutations require exact blocked-origin and sender-tab ownership.
+- Blocked-page unlist mutations also require the sender tab's current blocked-origin state to match the requested origin.
+- Blocked-page unlist mutations require a reserved top-level redirect and the exact committed document ID; subframes, stale documents, and replacement navigations fail closed.
 
 ## Service and API Notes
 

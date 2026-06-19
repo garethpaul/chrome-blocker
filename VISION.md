@@ -18,13 +18,26 @@ The current focus is:
 Priority:
 
 - Preserve the popup-to-background flow for adding and removing blocked sites
+- Keep popup and blocked-site background operations behind validated runtime
+  message contracts
 - Keep the block list local to the browser
 - Keep block-list persistence owned by background extension state
 - Keep per-tab blocking state scoped to live browser tabs
 - Keep background tab-state writes behind the valid-tab-id helper
+- Chrome Blocker accepts only finite integer tab IDs at runtime boundaries.
 - Keep tab navigation, replacement, and removal lifecycle behavior executable
+- Keep global origin-wide tab-state cleanup consistent across open tabs
 - Keep request interception scoped to main-frame navigations with valid tab ids
+- Keep fail-closed block-list startup hydration ahead of origin matching
+- Replay queued block-list mutations only after successful startup hydration
 - Keep blocked-page actions scoped to a valid current tab
+- Require typed unlist messages to match both the blocked origin and active tab
+- Only the exact popup extension page may start the blocked-page unlist countdown.
+- Popup routes and blocked-page unlist routes use separate exact sender authorization.
+- Blocked-page unlist mutations require exact blocked-origin and sender-tab ownership.
+- Blocked-page unlist mutations also require the sender tab's current blocked-origin state to match the requested origin.
+- Blocked-page unlist mutations require a reserved top-level redirect and the exact committed document ID; subframes, stale documents, and replacement navigations fail closed.
+- Content-script URL reads and redirects require exact popup sender and current-document origin ownership.
 - Keep blocked-page redirects scoped to the guarded unlist path
 - Keep popup actions scoped to a valid active tab id
 - Validate redirect message payloads before constructing extension URLs
@@ -37,6 +50,8 @@ Priority:
 
 Next priorities:
 
+- Complete the remaining Chrome Blocker browser verification matrix rows against
+  exact commits in isolated Chrome profiles
 - Add README setup, install, and permissions notes
 - Migrate from Manifest V2 to a maintained Manifest V3 design
 - Improve URL matching so blocked-site rules are predictable and safe

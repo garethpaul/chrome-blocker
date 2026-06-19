@@ -41,12 +41,25 @@
 
 ## Safety and gotchas
 
+- Blocked-page unlist mutations require exact blocked-origin and sender-tab ownership.
+- Blocked-page unlist mutations also require the sender tab's current blocked-origin state to match the requested origin.
+- Blocked-page unlist mutations require a reserved top-level redirect and the exact committed document ID; subframes, stale documents, and replacement navigations fail closed.
+
 - Detected references to Twitter. Keep API keys, OAuth credentials, tokens, and account-specific values in local configuration only.
 - The blocked-page unblock countdown clears any prior interval before starting a new timer and resets interval state when the modal closes.
+- Popup-to-blocked-page unlist requests are typed and must match both the current numeric tab id and normalized blocked origin.
 - Background tab blocking state is removed when tabs close and ignores invalid non-tab navigation ids.
 - The content-script redirect messages are normalized before constructing `blockedSite.html` URLs.
-- The background page owns block-list storage writes; the popup delegates new blocked origins instead of writing the same list twice.
+- The background context owns block-list storage writes; popup and blocked-site
+  pages use validated same-extension runtime messages instead of direct global
+  object access.
+- Startup hydration must replay queued block-list mutations only after the loaded
+  snapshot is installed, and must drop the queue on storage failure.
 - The background add and unblock paths use centralized tab state writes so invalid tab ids cannot create stray per-tab entries.
+- Chrome Blocker accepts only finite integer tab IDs at runtime boundaries.
+- Only the exact popup extension page may start the blocked-page unlist countdown.
+- Popup routes and blocked-page unlist routes use separate exact sender authorization.
+- Content-script URL reads and redirects require exact popup sender and current-document origin ownership.
 
 ## Agent workflow
 
