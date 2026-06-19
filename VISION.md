@@ -50,8 +50,8 @@ Priority:
 
 Next priorities:
 
-- Execute the Chrome Blocker browser verification matrix against an exact commit
-  in an isolated Chrome profile
+- Complete the remaining Chrome Blocker browser verification matrix rows against
+  exact commits in isolated Chrome profiles
 - Add README setup, install, and permissions notes
 - Migrate from Manifest V2 to a maintained Manifest V3 design
 - Improve URL matching so blocked-site rules are predictable and safe

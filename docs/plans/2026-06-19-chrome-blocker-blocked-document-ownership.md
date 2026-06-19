@@ -35,11 +35,15 @@ reuse authorization that belonged to a different document.
   from an external directory.
 - Isolated hostile mutations to the reservation, frame, document, navigation,
   pending cleanup, top-level page, and finite-ID guards were rejected.
-- Hosted exact-head and post-merge evidence is recorded in the pull request.
+- Exact runtime commit `49c1f6685c4eb12fb4a7ec0591f3353dafff4056`
+  passed an isolated unpacked-extension Chromium 133 flow for pending-state
+  hiding, committed `documentId` ownership, acknowledged unlisting, and embedded
+  blocked-page rejection.
+- Hosted exact-head and post-merge evidence is recorded in pull request #16.
 
 ## Residual Risk
 
-No Chrome Web Store deployment, normal-profile or split-incognito live flow, or
-physical browser UI interaction is claimed. `documentId` requires Chrome 106 or
-newer; older browsers fail closed for unlisting. Manifest V2 availability remains
-browser-policy dependent.
+No Chrome Web Store deployment, popup-button interaction, storage-failure,
+extension-reload, multi-tab, closed-tab, or split-incognito live flow is claimed.
+`documentId` requires Chrome 106 or newer; older browsers fail closed for
+unlisting. Manifest V2 availability remains browser-policy dependent.

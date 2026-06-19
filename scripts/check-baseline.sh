@@ -1273,7 +1273,8 @@ for browser_contract in \
   'Split-incognito flow' \
   'Do not convert `not run` into passing evidence.' \
   'browsing history, profile paths, account data, cookies' \
-  'every Chrome, popup, navigation, storage, tab, and incognito row as unexecuted'; do
+  'The four rows marked `pass` were executed against exact runtime commit' \
+  'All other rows remain unexecuted'; do
   if ! grep -Fq "$browser_contract" "$ROOT_DIR/BROWSER_VERIFICATION.md"; then
     printf '%s\n' "Chrome browser checklist must keep contract: $browser_contract" >&2
     exit 1
@@ -1282,9 +1283,9 @@ done
 
 if ! grep -Fq 'BROWSER_VERIFICATION.md' "$README" || \
    ! grep -Fq 'explicit unexecuted rows' "$README" || \
-   ! grep -Fq 'Chrome Blocker browser verification matrix' "$ROOT_DIR/VISION.md" || \
-   ! grep -Fq 'every live-extension row explicitly unexecuted' "$ROOT_DIR/CHANGES.md"; then
-  printf '%s\n' 'Project guidance must document the unexecuted Chrome browser matrix.' >&2
+   ! grep -Fq 'Complete the remaining Chrome Blocker browser verification matrix rows' "$ROOT_DIR/VISION.md" || \
+   ! grep -Fq 'Verified exact blocked-document ownership in an isolated Chromium 133 profile.' "$ROOT_DIR/CHANGES.md"; then
+  printf '%s\n' 'Project guidance must document completed and remaining Chrome browser evidence.' >&2
   exit 1
 fi
 
