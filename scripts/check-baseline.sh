@@ -1020,10 +1020,10 @@ for startup_plan_contract in \
 done
 
 if [ ! -f "$ROOT_DIR/Makefile" ] || \
-   ! grep -Fq 'ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))' "$ROOT_DIR/Makefile" || \
+   ! grep -Fq 'override ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))' "$ROOT_DIR/Makefile" || \
    ! grep -Fq '$(ROOT)scripts/test-background.js' "$ROOT_DIR/Makefile" || \
    ! grep -Fq '$(ROOT)scripts/test-blocked-site.js' "$ROOT_DIR/Makefile"; then
-  printf '%s\n' "Makefile must run rooted source and background behavior checks." >&2
+  printf '%s\n' "Makefile must run rooted checks and reject command-line root overrides." >&2
   exit 1
 fi
 
