@@ -1,0 +1,67 @@
+#!/bin/sh
+set -eu
+
+# Trusted-environment convenience only. The hostile-environment boundary is the
+# direct /usr/bin/env -i command documented in README.md.
+
+if [ "$#" -ne 2 ]; then
+	printf '%s\n' 'Usage: scripts/check <repository> <lint|test|build|verify|check>' >&2
+	exit 2
+fi
+
+case $2 in
+	lint|test|build|verify|check) ;;
+	*)
+		printf '%s\n' 'Unsupported verification target.' >&2
+		exit 2
+		;;
+esac
+
+case $0 in
+	*/*) bootstrap_directory=${0%/*} ;;
+	*) bootstrap_directory=. ;;
+esac
+bootstrap_directory=$(CDPATH='' cd -P "$bootstrap_directory" && pwd -P)
+launcher=$bootstrap_directory/run-make.js
+if [ ! -f "$launcher" ]; then
+	printf '%s\n' 'Chrome Blocker launcher is unavailable.' >&2
+	exit 2
+fi
+
+node=
+old_ifs=$IFS
+IFS=:
+for directory in ${PATH-}; do
+	case $directory in
+		/usr/bin|/bin|/usr/local/bin|/opt/homebrew/bin|/opt/hostedtoolcache/node/*/*/bin)
+			if [ -f "$directory/node" ] && [ -x "$directory/node" ]; then
+				node=$directory/node
+				break
+			fi
+			;;
+	esac
+done
+IFS=$old_ifs
+
+if [ -z "$node" ]; then
+	for candidate in /usr/bin/node /bin/node /usr/local/bin/node /opt/homebrew/bin/node; do
+		if [ -f "$candidate" ] && [ -x "$candidate" ]; then
+			node=$candidate
+			break
+		fi
+	done
+fi
+
+if [ -z "$node" ] || [ ! -x /usr/bin/env ]; then
+	printf '%s\n' 'Required verification tools are unavailable or unsafe.' >&2
+	exit 2
+fi
+
+exec /usr/bin/env -i \
+	HOME=/nonexistent \
+	LANG=C \
+	LC_ALL=C \
+	PATH=/usr/bin:/bin \
+	TMPDIR=/tmp \
+	TZ=UTC \
+	"$node" "$launcher" "$1" "$2"

@@ -38,8 +38,12 @@ UNLIST_TAB_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-unlist
 CONTENT_MESSAGE_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-content-message-ownership.md"
 UNLIST_STATE_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-17-chrome-blocker-unlist-state-ownership.md"
 BLOCKED_DOCUMENT_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-19-chrome-blocker-blocked-document-ownership.md"
+MAKE_LAUNCHER="$ROOT_DIR/scripts/run-make.js"
+NODE_GATE="$ROOT_DIR/scripts/run-node-gate.js"
+MAKE_LAUNCHER_TEST="$ROOT_DIR/scripts/test-make-launcher.js"
+CHECK_BOOTSTRAP="$ROOT_DIR/scripts/check"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$UNLIST_SENDER_PLAN" "$BACKGROUND_ROUTE_PLAN" "$UNLIST_TAB_OWNERSHIP_PLAN" "$CONTENT_MESSAGE_OWNERSHIP_PLAN" "$UNLIST_STATE_OWNERSHIP_PLAN" "$BLOCKED_DOCUMENT_OWNERSHIP_PLAN" "$POPUP_TEST" "$CONTENT_SCRIPT_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$UNLIST_SENDER_PLAN" "$BACKGROUND_ROUTE_PLAN" "$UNLIST_TAB_OWNERSHIP_PLAN" "$CONTENT_MESSAGE_OWNERSHIP_PLAN" "$UNLIST_STATE_OWNERSHIP_PLAN" "$BLOCKED_DOCUMENT_OWNERSHIP_PLAN" "$POPUP_TEST" "$CONTENT_SCRIPT_TEST" "$CHECK_BOOTSTRAP" "$MAKE_LAUNCHER" "$NODE_GATE" "$MAKE_LAUNCHER_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -89,7 +93,7 @@ for content_message_test_contract in \
   fi
 done
 
-if ! grep -Fq '$(NODE) $(ROOT)scripts/test-content-script.js' "$ROOT_DIR/Makefile"; then
+if ! grep -Fq "'test-content-script.js'" "$NODE_GATE"; then
   printf '%s\n' "The full test gate must execute the content-script ownership suite." >&2
   exit 1
 fi
@@ -398,7 +402,7 @@ for message_test_contract in \
 done
 
 if ! grep -Fq 'Popup runtime message boundary tests passed.' "$POPUP_TEST" || \
-   ! grep -Fq '$(NODE) $(ROOT)scripts/test-popup.js' "$ROOT_DIR/Makefile"; then
+   ! grep -Fq "'test-popup.js'" "$NODE_GATE"; then
   printf '%s\n' "Popup runtime behavior test must remain in the repository gate." >&2
   exit 1
 fi
@@ -574,8 +578,31 @@ fi
 if ! grep -Fq "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10" "$CI_WORKFLOW" ||
   ! grep -Fq "actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e" "$CI_WORKFLOW" ||
   ! grep -Fq "node-version: [20, 22, 24]" "$CI_WORKFLOW" ||
-  ! grep -Fq "run: make check" "$CI_WORKFLOW"; then
-  printf '%s\n' "GitHub Actions workflow must pin actions and run make check across supported Node releases." >&2
+  ! grep -Fq "node scripts/test-make-launcher.js" "$CI_WORKFLOW" ||
+  ! grep -Fq "/usr/bin/env -i HOME=/nonexistent LANG=C LC_ALL=C PATH=/usr/bin:/bin TMPDIR=/tmp TZ=UTC" "$CI_WORKFLOW" || \
+  ! grep -Fq '"$node_path" "$repository/scripts/run-make.js" "$repository" check' "$CI_WORKFLOW" || \
+  ! grep -Fq 'LD_PRELOAD: ""' "$CI_WORKFLOW" || \
+  ! grep -Fq 'DYLD_INSERT_LIBRARIES: ""' "$CI_WORKFLOW" || \
+  ! grep -Fq 'NODE_OPTIONS: ""' "$CI_WORKFLOW"; then
+  printf '%s\n' "GitHub Actions workflow must pin actions and run the validated launcher across supported Node releases." >&2
+  exit 1
+fi
+
+for trust_contract in \
+  'requires a trusted pre-exec environment' \
+  'dynamic loader environment' \
+  'absolute `/usr/bin/env` and Node executables must' \
+  'does not claim to defend against' \
+  'same-privilege pre-exec loader'; do
+  if ! grep -Fq "$trust_contract" "$README"; then
+    printf '%s\n' "README must retain pre-exec trust boundary: $trust_contract" >&2
+    exit 1
+  fi
+done
+
+if [ ! -x "$CHECK_BOOTSTRAP" ] || \
+   ! grep -Fq 'Trusted-environment convenience only' "$CHECK_BOOTSTRAP"; then
+  printf '%s\n' "Shell helper must remain explicitly trusted-environment only." >&2
   exit 1
 fi
 
@@ -1020,12 +1047,86 @@ for startup_plan_contract in \
 done
 
 if [ ! -f "$ROOT_DIR/Makefile" ] || \
-   ! grep -Fq 'override ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))' "$ROOT_DIR/Makefile" || \
-   ! grep -Fq '$(ROOT)scripts/test-background.js' "$ROOT_DIR/Makefile" || \
-   ! grep -Fq '$(ROOT)scripts/test-blocked-site.js' "$ROOT_DIR/Makefile"; then
-  printf '%s\n' "Makefile must run rooted checks and reject command-line root overrides." >&2
+   ! grep -Fq 'CHROME_BLOCKER_REPOSITORY_MAKEFILE := 1' "$ROOT_DIR/Makefile" || \
+   ! grep -Fq 'Private Chrome Blocker targets require the validated Node launcher' "$ROOT_DIR/Makefile" || \
+   ! grep -Fq 'node scripts/run-make.js . check' "$ROOT_DIR/Makefile"; then
+  printf '%s\n' "Makefile must delegate public checks to the validated launcher." >&2
   exit 1
 fi
+
+for launcher_contract in \
+  "manifest.name !== 'GetToWork'" \
+  "manifest.version !== '0.01'" \
+  "'MAKEFLAGS'" \
+  "'MAKEFILES'" \
+  "'GNUMAKEFLAGS'" \
+  "git(gitContext, ['archive', '--format=tar', head], null)" \
+  'currentIdentity.ino !== expectedIdentity.ino' \
+  "git(gitContext, ['status', '--porcelain=v1', '--untracked-files=all'], 'utf8')" \
+  '`--git-dir=${context.gitDirectory}`' \
+  '`--work-tree=${context.repository}`' \
+  "GIT_CONFIG_NOSYSTEM: '1'" \
+  "GIT_CONFIG_GLOBAL: '/dev/null'" \
+  "resolveTool('git')" \
+  "resolveTool('tar')" \
+  "resolveTool('make')" \
+  'resolveCurrentNode()' \
+  "resolveTool('sh')" \
+  'verifyTool(tools.git)' \
+  'verifyTool(tools.tar)' \
+  'verifyTool(tools.make)' \
+  'verifyTool(tools.node)' \
+  'verifyTool(tools.sh)' \
+  'stat.uid !== tool.uid' \
+  "environment.PATH = '/usr/bin:/bin'" \
+  "['core.fsmonitor', 'false']" \
+  "['core.filemode', 'true']" \
+  "['core.symlinks', 'true']" \
+  "['core.hooksPath', gitHooks]" \
+  'context.configuration.flatMap' \
+  "^filter\\\\..*\\\\.(clean|smudge|process|required)$" \
+  "shell: false" \
+  "targets.get(args[1])"; do
+  if ! grep -Fq "$launcher_contract" "$MAKE_LAUNCHER"; then
+    printf '%s\n' "Make launcher must retain contract: $launcher_contract" >&2
+    exit 1
+  fi
+done
+
+for gate_contract in \
+  'crypto.timingSafeEqual' \
+  'fs.realpathSync(process.cwd())' \
+  "path.join(root, 'scripts', 'check-baseline.sh')" \
+  "'test-background.js'" \
+  'shell: false'; do
+  if ! grep -Fq "$gate_contract" "$NODE_GATE"; then
+    printf '%s\n' "Node gate must retain contract: $gate_contract" >&2
+    exit 1
+  fi
+done
+
+for launcher_test_contract in \
+  'clean-child command clears NODE_OPTIONS before the Node child starts' \
+  'clean-child command removes post-start Node, npm, shell, Git, and Make variables from every gate' \
+  'path-safe launcher rejects extra arguments, flags, assignments, and unsupported targets' \
+  'clean-child command uses absolute Node and ignores child PATH and startup variables' \
+  'preserves hostile repository bytes through a symlink' \
+  'rejects Make flags, assignments, external Makefiles, and extra targets' \
+  'clears dangerous Make environment channels' \
+  'ignores caller PATH wrappers for git, tar, make, node, npm, and sh' \
+  'isolates Git repository, object, index, discovery, config, lock, and trace channels' \
+  'disables repository-local fsmonitor configuration' \
+  'disables repository-local clean and process filters' \
+  'rejects tracked and untracked source changes' \
+  'rejects mode, symlink, hardlink content, and staged index changes' \
+  'private targets require launcher context' \
+  'repository is replaced after validation' \
+  'private targets support GNU Make 3.81 and 4.4.1 while launcher propagates gate failure'; do
+  if ! grep -Fq "$launcher_test_contract" "$MAKE_LAUNCHER_TEST"; then
+    printf '%s\n' "Launcher regression must retain: $launcher_test_contract" >&2
+    exit 1
+  fi
+done
 
 if ! grep -Fq 'action: "beginUnlist"' "$POPUP" || \
    ! grep -Fq 'tabId: tab.id' "$POPUP" || \
