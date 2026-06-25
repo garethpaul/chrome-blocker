@@ -1,5 +1,39 @@
 # Chrome Blocker Changes
 
+## 2026-06-25
+
+- Revalidated the trusted-path verification boundary with the hostile launcher
+  regression suite, the full repository check, and an independent Codex review.
+
+## 2026-06-22
+
+- Defined the maintained scope as repository-path and Make-argument safety
+  within a trusted pre-exec process environment. The caller, account, loader
+  environment, and absolute system/Node executables are explicit non-goals.
+- Kept the direct `/usr/bin/env -i` command for a fixed post-start child
+  environment and opaque Node/repository/target argv, not as a defense against
+  same-privilege loader or parent-process injection.
+- Kept `scripts/check` only as a trusted-environment convenience. It is not a
+  security boundary because a shell interpreter starts before script code can
+  clear shell startup variables.
+- Added a Node verification launcher that validates repository identity from
+  OS argv before Make parsing, clears Make control channels, and exposes only
+  fixed verification targets.
+- Kept `make check` as a trusted-path convenience while documenting that raw
+  external `make -f` input is not safe for arbitrary hostile path data on GNU
+  Make 3.81.
+- Added launcher regressions for hostile path bytes, symlinks, control-channel
+  injection, target validation, exact gate argv, and failure closure.
+- Bound Make and gate execution to a private archive of the clean tracked
+  `HEAD` tree, with source directory, commit, index, and worktree revalidation
+  after snapshot creation to reject direct and symlink directory swaps.
+- Pinned snapshot Git commands to the selected checkout and isolated them from
+  inherited repository, object, index, config, discovery, lock, trace, hook,
+  filter, and fsmonitor channels.
+- Resolved Git, Tar, Make, Node, and the baseline shell from fixed system-tool
+  locations before repository processing, rechecked executable identities at
+  use, and removed caller `PATH` from private snapshot execution.
+
 ## 2026-06-19
 
 - Blocked-page unlist mutations require a reserved top-level redirect and the exact committed document ID; subframes, stale documents, and replacement navigations fail closed.

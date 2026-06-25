@@ -51,7 +51,7 @@ Load the extension unpacked from this directory:
 
 ## Testing and Verification
 
-Run the SDK-free source baseline and URL-rule tests:
+Trusted local convenience commands:
 
 ```sh
 make check
@@ -80,9 +80,64 @@ Blocked-page unlist mutations require a reserved top-level redirect and the exac
 The popup behavior test executes the real popup script with mocked Chrome and
 DOM APIs and covers background state lookup, add, clear, unlist, and redirect
 messages.
-GitHub Actions runs `make check` on Node 20, 22, and 24 for pushes, pull
-requests, and manual dispatches. The workflow uses commit-pinned actions,
+The path-safe verification entry point is a direct process invocation whose
+executable and first argument are `/usr/bin/env` and `-i`.
+Supply absolute Node, launcher, and repository paths as separate OS argv values:
+
+```sh
+/usr/bin/env -i HOME=/nonexistent LANG=C LC_ALL=C PATH=/usr/bin:/bin TMPDIR=/tmp TZ=UTC \
+  /absolute/path/to/node \
+  /absolute/path/to/chrome-blocker/scripts/run-make.js \
+  /absolute/path/to/chrome-blocker check
+```
+
+The command above requires a trusted pre-exec environment. The caller process,
+operating-system user account, dynamic loader environment (including
+`LD_PRELOAD` and `DYLD_*`), and absolute `/usr/bin/env` and Node executables must
+already be trusted because they can execute or redirect code before application
+sanitization begins. If a shell discovers or interpolates the absolute paths,
+that shell is trusted too. This interface does not claim to defend against
+same-privilege pre-exec loader, executable-replacement, or parent-process
+injection.
+
+Within that trust boundary, `/usr/bin/env -i` gives the Node launcher a fixed
+post-start environment, and repository paths and targets remain separate opaque
+OS argv values rather than Make or shell source. The Node launcher then
+receives the repository and target through OS argv before Make parsing,
+validates the exact Chrome Blocker marker and manifest identity, clears Make
+control environment channels, requires a clean Git checkout, and archives the
+exact tracked `HEAD` tree into a private temporary directory before invoking
+only fixed internal targets. The source checkout is checked again after the
+snapshot, and execution fails closed if its directory identity, `HEAD`, index,
+or worktree changes during the copy. Make and every gate run only inside the
+validated snapshot rather than reopening the caller pathname. Git subprocesses
+use the selected checkout's pinned metadata path, an isolated home/config,
+disabled fsmonitor, hooks, and clean/process filters, plus a minimal environment
+that does not inherit repository, object, index, config, lock, discovery, or
+trace channels. Git, Tar, Make, Node, and the baseline shell are resolved to
+canonical executable files from a fixed system-tool search list before the
+repository argument is processed; their file identities and execute bits are
+checked again immediately before use, and child processes receive a fixed
+`/usr/bin:/bin` path instead of caller `PATH`. No `npm` process is used. It
+preserves spaces, newlines, dollar signs, quotes, backslashes, and shell
+metacharacters in repository paths as opaque process arguments. Symlink inputs
+resolve to the selected checkout.
+
+Plain `make check`, `scripts/check`, and direct `node scripts/run-make.js` remain
+conveniences for trusted local environments only and are not the path-safe
+automation interface. Raw Make flags,
+assignments, external `-f` files, and extra targets are not part of the
+hostile-input interface; GNU Make 3.81 can evaluate Make syntax embedded in
+external `-f` path data before any repository recipe or Node guard runs.
+
+GitHub Actions runs the hostile-path launcher regression and the direct
+clean-child command on
+Node 20, 22, and 24 for pushes, pull requests, and manual dispatches. The
+workflow uses commit-pinned actions,
 read-only repository access, and a bounded runtime.
+It also clears common loader and Node variables as defense-in-depth hygiene;
+that does not create a security boundary against code that executes before the
+workflow shell or `/usr/bin/env` starts.
 The job does not persist checkout credentials after source retrieval.
 
 Use [`BROWSER_VERIFICATION.md`](BROWSER_VERIFICATION.md) to record exact-head

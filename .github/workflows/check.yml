@@ -27,4 +27,17 @@ jobs:
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: ${{ matrix.node-version }}
-      - run: make check
+      - run: |
+          node_path="$(command -v node)"
+          repository="$(pwd -P)"
+          node scripts/test-make-launcher.js
+          /usr/bin/env -i HOME=/nonexistent LANG=C LC_ALL=C PATH=/usr/bin:/bin TMPDIR=/tmp TZ=UTC \
+            "$node_path" "$repository/scripts/run-make.js" "$repository" check
+        env:
+          BASH_ENV: ""
+          DYLD_INSERT_LIBRARIES: ""
+          DYLD_LIBRARY_PATH: ""
+          ENV: ""
+          LD_PRELOAD: ""
+          NODE_OPTIONS: ""
+          NODE_PATH: ""
