@@ -1,5 +1,10 @@
 # Chrome Blocker Changes
 
+## 2026-06-25
+
+- Revalidated the trusted-path verification boundary with the hostile launcher
+  regression suite, the full repository check, and an independent Codex review.
+
 ## 2026-06-22
 
 - Defined the maintained scope as repository-path and Make-argument safety
