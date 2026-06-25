@@ -55,6 +55,7 @@ Helpful reports include:
 - Blocked-page unlist mutations require exact blocked-origin and sender-tab ownership.
 - Blocked-page unlist mutations also require the sender tab's current blocked-origin state to match the requested origin.
 - Blocked-page unlist mutations require a reserved top-level redirect and the exact committed document ID; subframes, stale documents, and replacement navigations fail closed.
+- Reloading the canonical blocked page preserves its blocked origin while replacing the authorized document ID.
 
 ## Service and API Notes
 

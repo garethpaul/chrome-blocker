@@ -325,6 +325,19 @@ listeners.onCommitted({
 });
 assert.strictEqual(context.getTabState(7), "https://example.com");
 
+listeners.onCommitted({
+  tabId: 7,
+  frameId: 0,
+  documentId: "reloaded-blocked-document",
+  url: "chrome-extension://test/blockedSite.html?blocked=" +
+    encodeURIComponent("https://example.com")
+});
+assert.strictEqual(context.getTabState(7), "https://example.com");
+assert.strictEqual(
+  context.tabBlockingDocumentMap[7],
+  "reloaded-blocked-document"
+);
+
 assert.deepStrictEqual(
   plain(listeners.onBeforeRequest({
     tabId: 16,
@@ -446,6 +459,14 @@ listeners.onCommitted({
     encodeURIComponent("https://message.test")
 });
 assert.strictEqual(context.getTabState(14), "https://message.test");
+listeners.onCommitted({
+  tabId: 14,
+  frameId: 0,
+  documentId: "reloaded-message-document",
+  url: "chrome-extension://test/blockedSite.html?blocked=" +
+    encodeURIComponent("https://message.test")
+});
+assert.strictEqual(context.getTabState(14), "https://message.test");
 const writesBeforeUnownedTabUnlist = storedValues.length;
 assert.strictEqual(
   sendBackgroundMessage({action: "background:unlistSite", tabId: 15,
@@ -481,7 +502,7 @@ for (const senderTabId of [undefined, -1, 1.5, 15]) {
       blockedSite: "https://message.test/other"}, undefined,
       "chrome-extension://test/blockedSite.html?blocked=" +
         encodeURIComponent("https://message.test"), senderTabId, 0,
-      "message-document"),
+      "reloaded-message-document"),
     undefined
   );
   assert.strictEqual(context.getTabState(14), "https://message.test");
@@ -489,6 +510,7 @@ for (const senderTabId of [undefined, -1, 1.5, 15]) {
 for (const senderIdentity of [
   {frameId: 1, documentId: "message-document"},
   {frameId: 0, documentId: undefined},
+  {frameId: 0, documentId: "message-document"},
   {frameId: 0, documentId: "replacement-document"}
 ]) {
   assert.strictEqual(
@@ -511,7 +533,7 @@ assert.deepStrictEqual(
     blockedSite: "https://message.test/other"}, undefined,
     "chrome-extension://test/blockedSite.html?blocked=" +
       encodeURIComponent("https://message.test"), 14, 0,
-    "message-document"),
+    "reloaded-message-document"),
   {ok: true}
 );
 assert.strictEqual(context.getTabState(14), 0);

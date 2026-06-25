@@ -1,5 +1,25 @@
 # Chrome Blocker Changes
 
+## 2026-06-25T21:05:51Z — P1 correctness/security — cycle: blocked-page reload ownership
+
+- Threads: inspected the explicit MIT license, default branch, open pull
+  requests and issues, hosted checks, block-list hydration, runtime message
+  authorization, pending redirects, committed document ownership, tab
+  replacement, blocked-page countdown behavior, and executable VM contracts.
+- Bug fixed: reloading an already authorized canonical blocked page now keeps
+  the tab's blocked origin while replacing the old committed document ID;
+  unrelated top-level navigation still clears ownership.
+- Files: `js/background.js`, `scripts/test-background.js`,
+  `scripts/check-baseline.sh`, lifecycle documentation, and
+  `docs/plans/2026-06-25-chrome-blocker-blocked-page-reload.md`.
+- Validation: reproduced the state loss in the real background VM test and
+  passed focused background, URL, content-script, popup, blocked-page, and
+  static contract checks.
+- Blockers: no unpacked-extension browser flow was executed locally; the
+  existing isolated-profile browser matrix remains the manual integration gate.
+- Next: verify reload, hard reload, back/forward, and tab replacement behavior
+  in an isolated current Chrome profile at the reviewed commit.
+
 ## 2026-06-25
 
 - Revalidated the trusted-path verification boundary with the hostile launcher

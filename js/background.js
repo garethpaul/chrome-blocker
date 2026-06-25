@@ -304,7 +304,8 @@ function updateMapping(details) {
 
   var blockedOrigin = getBlockedPageOrigin(details.url);
   if (blockedOrigin !== "" &&
-      pendingTabBlockingMap[details.tabId] === blockedOrigin) {
+      (pendingTabBlockingMap[details.tabId] === blockedOrigin ||
+       getTabState(details.tabId) === blockedOrigin)) {
     setTabBlockingState(details.tabId, blockedOrigin, details.documentId);
     delete pendingTabBlockingMap[details.tabId];
   } else {
