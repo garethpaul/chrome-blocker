@@ -38,12 +38,13 @@ UNLIST_TAB_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-unlist
 CONTENT_MESSAGE_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-content-message-ownership.md"
 UNLIST_STATE_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-17-chrome-blocker-unlist-state-ownership.md"
 BLOCKED_DOCUMENT_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-19-chrome-blocker-blocked-document-ownership.md"
+BLOCKED_PAGE_RELOAD_PLAN="$ROOT_DIR/docs/plans/2026-06-25-chrome-blocker-blocked-page-reload.md"
 MAKE_LAUNCHER="$ROOT_DIR/scripts/run-make.js"
 NODE_GATE="$ROOT_DIR/scripts/run-node-gate.js"
 MAKE_LAUNCHER_TEST="$ROOT_DIR/scripts/test-make-launcher.js"
 CHECK_BOOTSTRAP="$ROOT_DIR/scripts/check"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$UNLIST_SENDER_PLAN" "$BACKGROUND_ROUTE_PLAN" "$UNLIST_TAB_OWNERSHIP_PLAN" "$CONTENT_MESSAGE_OWNERSHIP_PLAN" "$UNLIST_STATE_OWNERSHIP_PLAN" "$BLOCKED_DOCUMENT_OWNERSHIP_PLAN" "$POPUP_TEST" "$CONTENT_SCRIPT_TEST" "$CHECK_BOOTSTRAP" "$MAKE_LAUNCHER" "$NODE_GATE" "$MAKE_LAUNCHER_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$UNLIST_SENDER_PLAN" "$BACKGROUND_ROUTE_PLAN" "$UNLIST_TAB_OWNERSHIP_PLAN" "$CONTENT_MESSAGE_OWNERSHIP_PLAN" "$UNLIST_STATE_OWNERSHIP_PLAN" "$BLOCKED_DOCUMENT_OWNERSHIP_PLAN" "$BLOCKED_PAGE_RELOAD_PLAN" "$POPUP_TEST" "$CONTENT_SCRIPT_TEST" "$CHECK_BOOTSTRAP" "$MAKE_LAUNCHER" "$NODE_GATE" "$MAKE_LAUNCHER_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -164,6 +165,7 @@ for blocked_document_source_contract in \
   'var pendingTabBlockingMap = {};' \
   'function getBlockedPageOrigin(candidateUrl)' \
   'pendingTabBlockingMap[details.tabId] === blockedOrigin' \
+  'getTabState(details.tabId) === blockedOrigin' \
   'setTabBlockingState(details.tabId, blockedOrigin, details.documentId);' \
   'details.frameId !== 0' \
   'function isTopLevelBlockedPage()' \
@@ -177,12 +179,34 @@ done
 for blocked_document_test_contract in \
   'documentId: "subframe-document"' \
   'documentId: "blocked-document"' \
+  'documentId: "reloaded-blocked-document"' \
+  'documentId: "reloaded-message-document"' \
   'documentId: "replacement-document"' \
   'context.pendingTabBlockingMap[17], undefined' \
   'context.window.top = {};' \
   'assert.strictEqual(currentTabLookups, lookupsBeforeRejectedSenders);'; do
   if ! grep -Fq "$blocked_document_test_contract" "$BACKGROUND_TEST" "$BLOCKED_SITE_TEST"; then
     printf '%s\n' "Missing blocked-document ownership regression: $blocked_document_test_contract" >&2
+    exit 1
+  fi
+done
+
+for blocked_page_reload_doc in "$README" "$ROOT_DIR/SECURITY.md" \
+  "$ROOT_DIR/VISION.md" "$ROOT_DIR/AGENTS.md"; do
+  if ! tr '\n' ' ' < "$blocked_page_reload_doc" | tr -s '[:space:]' ' ' | \
+      grep -Fq "Reloading the canonical blocked page preserves its blocked origin while replacing the authorized document ID."; then
+    printf '%s\n' "$blocked_page_reload_doc must document blocked-page reload ownership." >&2
+    exit 1
+  fi
+done
+
+for blocked_page_reload_plan_contract in \
+  'Status: Completed' \
+  'RED reproduced' \
+  'reloaded-blocked-document' \
+  'make check'; do
+  if ! grep -Fq "$blocked_page_reload_plan_contract" "$BLOCKED_PAGE_RELOAD_PLAN"; then
+    printf '%s\n' "Blocked-page reload plan must record completed evidence: $blocked_page_reload_plan_contract" >&2
     exit 1
   fi
 done
