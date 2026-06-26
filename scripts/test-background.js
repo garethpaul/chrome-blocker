@@ -161,7 +161,7 @@ assert.strictEqual(queuedMutationResult, true);
 assert.strictEqual(queuedMutationHarness.context.getTabState(5), 0);
 assert.strictEqual(
   queuedMutationHarness.context.pendingTabBlockingMap[5],
-  "https://queued.test"
+  undefined
 );
 
 const hydrationWriteFailureHarness = createBackgroundHarness({deferStorageWrites: true});
@@ -373,6 +373,7 @@ listeners.onCommitted({
 assert.strictEqual(context.getTabState(16), 0);
 
 context.addBlockedSite(24, "https://example.com/blocked");
+context.setPendingTabBlockingState(24, "https://example.com");
 listeners.onCommitted({
   tabId: 24,
   frameId: 0,
@@ -483,6 +484,12 @@ assert.deepStrictEqual(
   {ok: true}
 );
 assert.strictEqual(context.getTabState(14), 0);
+assert.strictEqual(context.pendingTabBlockingMap[14], undefined);
+assert.deepStrictEqual(sendBackgroundMessage({
+  action: "background:reserveBlockedSite",
+  blockedSite: "https://message.test/path"
+}, undefined, "https://message.test/private", 14, 0), {ok: true});
+assert.strictEqual(context.pendingTabBlockingMap[14], "https://message.test");
 listeners.onCommitted({
   tabId: 14,
   frameId: 0,
@@ -556,6 +563,10 @@ for (const senderIdentity of [
   assert.strictEqual(context.getTabState(14), "https://message.test");
 }
 context.addBlockedSite(17, "https://message.test/queued");
+assert.deepStrictEqual(sendBackgroundMessage({
+  action: "background:reserveBlockedSite",
+  blockedSite: "https://message.test/queued"
+}, undefined, "https://message.test/queued", 17, 0), {ok: true});
 assert.strictEqual(
   context.pendingTabBlockingMap[17],
   "https://message.test"
@@ -582,6 +593,7 @@ assert.strictEqual(context.tabBlockingDocumentMap[9], undefined);
 assert.strictEqual(context.getTabState(7), 0);
 
 context.addBlockedSite(18, "https://example.com/old");
+context.setPendingTabBlockingState(18, "https://example.com");
 listeners.onCommitted({
   tabId: 18,
   frameId: 0,
@@ -590,6 +602,7 @@ listeners.onCommitted({
     encodeURIComponent("https://example.com")
 });
 context.addBlockedSite(19, "https://example.com/new");
+context.setPendingTabBlockingState(19, "https://example.com");
 listeners.onCommitted({
   tabId: 19,
   frameId: 0,
@@ -606,6 +619,7 @@ listeners.onTabReplaced({tabId: 10, replacedTabId: -1});
 assert.strictEqual(context.getTabState(10), 0);
 
 context.addBlockedSite(20, "https://example.com/stale");
+context.setPendingTabBlockingState(20, "https://example.com");
 listeners.onCommitted({
   tabId: 20,
   frameId: 0,
@@ -617,6 +631,7 @@ listeners.onTabReplaced({tabId: -1, replacedTabId: 20});
 assert.strictEqual(context.getTabState(20), 0);
 
 context.addBlockedSite(21, "https://example.com/self");
+context.setPendingTabBlockingState(21, "https://example.com");
 listeners.onCommitted({
   tabId: 21,
   frameId: 0,
@@ -632,10 +647,28 @@ assert.strictEqual(
 );
 
 context.addBlockedSite(22, "https://example.com/pending");
+assert.deepStrictEqual(sendBackgroundMessage({
+  action: "background:reserveBlockedSite",
+  blockedSite: "https://example.com/pending"
+}, undefined, "https://example.com/pending", 22, 0), {ok: true});
 assert.strictEqual(context.pendingTabBlockingMap[22], "https://example.com");
 listeners.onTabReplaced({tabId: 23, replacedTabId: 22});
 assert.strictEqual(context.pendingTabBlockingMap[22], undefined);
 assert.strictEqual(context.getTabState(23), 0);
+
+for (const reserveSender of [
+  {senderId: "other-extension", senderUrl: "https://example.com", tabId: 25, frameId: 0},
+  {senderUrl: "https://other.test", tabId: 25, frameId: 0},
+  {senderUrl: "https://example.com", tabId: 25, frameId: 1},
+  {senderUrl: "https://example.com", tabId: undefined, frameId: 0}
+]) {
+  assert.strictEqual(sendBackgroundMessage({
+    action: "background:reserveBlockedSite",
+    blockedSite: "https://example.com"
+  }, reserveSender.senderId, reserveSender.senderUrl, reserveSender.tabId,
+  reserveSender.frameId), undefined);
+}
+assert.strictEqual(context.pendingTabBlockingMap[25], undefined);
 
 listeners.onRemoved(9);
 assert.strictEqual(context.getTabState(9), 0);
@@ -643,6 +676,9 @@ assert.strictEqual(context.getTabState(9), 0);
 context.addBlockedSite(11, "https://example.com/path");
 context.addBlockedSite(12, "https://example.com/another");
 context.addBlockedSite(13, "https://other.test/path");
+context.setPendingTabBlockingState(11, "https://example.com");
+context.setPendingTabBlockingState(12, "https://example.com");
+context.setPendingTabBlockingState(13, "https://other.test");
 for (const blockedTab of [
   {tabId: 11, origin: "https://example.com", documentId: "example-document-11"},
   {tabId: 12, origin: "https://example.com", documentId: "example-document-12"},

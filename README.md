@@ -210,6 +210,9 @@ When the required SDK or runtime is unavailable, use static checks and source re
   navigation remains fail closed.
 - The content-script redirect messages are normalized before constructing
   `blockedSite.html` URLs.
+- Persisting a blocked origin does not reserve tab authority. The exact current
+  top-level content document must reserve the matching pending tab/origin
+  immediately before navigating to `blockedSite.html`.
 - Content-script URL reads and redirects require exact popup sender and current-document origin ownership.
 - The background context owns block-list storage writes; the popup delegates new
   blocked origins instead of writing the same list twice.

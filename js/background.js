@@ -88,16 +88,13 @@ function addBlockedSite(tabid, blockedSite, completion) {
 
   runBlockedListMutation(function(done) {
     if (blockedSites.indexOf(normalizedSite) !== -1) {
-      setPendingTabBlockingState(tabid, normalizedSite);
       done(true);
       return;
     }
 
     var nextBlockedSites = blockedSites.slice();
     nextBlockedSites.push(normalizedSite);
-    persistBlockedSites(nextBlockedSites, function() {
-      setPendingTabBlockingState(tabid, normalizedSite);
-    }, done);
+    persistBlockedSites(nextBlockedSites, function() {}, done);
   }, completion);
 }
 
@@ -202,6 +199,15 @@ function isTrustedPopupSender(sender) {
       sender.url === chrome.runtime.getURL("popup.html");
 }
 
+function getTrustedContentOrigin(sender) {
+  if (!sender || sender.id !== chrome.runtime.id || !sender.tab ||
+      !isValidTabId(sender.tab.id) || sender.frameId !== 0) {
+    return "";
+  }
+
+  return normalizeBlockedOrigin(sender.url);
+}
+
 function getBlockedPageOrigin(candidateUrl) {
   var blockedPageUrl = chrome.runtime.getURL("blockedSite.html");
   if (typeof candidateUrl !== "string" ||
@@ -245,7 +251,11 @@ function handleBackgroundMessage(message, sender, sendResponse) {
       message.action === "background:addBlockedSite" ||
       message.action === "background:clearBlacklist";
   var blockedPageOrigin = getTrustedBlockedPageOrigin(sender);
+  var contentOrigin = getTrustedContentOrigin(sender);
   if ((popupAction && !isTrustedPopupSender(sender)) ||
+      (message.action === "background:reserveBlockedSite" &&
+       (contentOrigin === "" || contentOrigin !==
+        normalizeBlockedOrigin(message.blockedSite))) ||
       (message.action === "background:unlistSite" &&
        (blockedPageOrigin === "" || blockedPageOrigin !==
         normalizeBlockedOrigin(message.blockedSite) ||
@@ -270,6 +280,13 @@ function handleBackgroundMessage(message, sender, sendResponse) {
       sendResponse({ok: success});
     });
     return true;
+  } else if (message.action === "background:reserveBlockedSite") {
+    if (blockedSitesReady && blockedSites.indexOf(contentOrigin) !== -1) {
+      setPendingTabBlockingState(sender.tab.id, contentOrigin);
+      sendResponse({ok: true});
+    } else {
+      sendResponse({ok: false});
+    }
   } else if (message.action === "background:clearBlacklist") {
     clearBlacklist(function(success) {
       sendResponse({ok: success});

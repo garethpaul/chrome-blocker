@@ -42,12 +42,13 @@ BLOCKED_DOCUMENT_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-19-chrome-blocker-
 BLOCKED_PAGE_RELOAD_PLAN="$ROOT_DIR/docs/plans/2026-06-25-chrome-blocker-blocked-page-reload.md"
 TAB_REPLACEMENT_DESIGN="$ROOT_DIR/docs/plans/2026-06-25-chrome-blocker-tab-replacement-design.md"
 TAB_REPLACEMENT_PLAN="$ROOT_DIR/docs/plans/2026-06-25-chrome-blocker-tab-replacement.md"
+CONTENT_OWNED_REDIRECT_PLAN="$ROOT_DIR/docs/plans/2026-06-26-chrome-blocker-content-owned-redirect.md"
 MAKE_LAUNCHER="$ROOT_DIR/scripts/run-make.js"
 NODE_GATE="$ROOT_DIR/scripts/run-node-gate.js"
 MAKE_LAUNCHER_TEST="$ROOT_DIR/scripts/test-make-launcher.js"
 CHECK_BOOTSTRAP="$ROOT_DIR/scripts/check"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$README_INSTALL_PLAN" "$UNLIST_SENDER_PLAN" "$BACKGROUND_ROUTE_PLAN" "$UNLIST_TAB_OWNERSHIP_PLAN" "$CONTENT_MESSAGE_OWNERSHIP_PLAN" "$UNLIST_STATE_OWNERSHIP_PLAN" "$BLOCKED_DOCUMENT_OWNERSHIP_PLAN" "$BLOCKED_PAGE_RELOAD_PLAN" "$TAB_REPLACEMENT_DESIGN" "$TAB_REPLACEMENT_PLAN" "$POPUP_TEST" "$CONTENT_SCRIPT_TEST" "$CHECK_BOOTSTRAP" "$MAKE_LAUNCHER" "$NODE_GATE" "$MAKE_LAUNCHER_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$README_INSTALL_PLAN" "$UNLIST_SENDER_PLAN" "$BACKGROUND_ROUTE_PLAN" "$UNLIST_TAB_OWNERSHIP_PLAN" "$CONTENT_MESSAGE_OWNERSHIP_PLAN" "$UNLIST_STATE_OWNERSHIP_PLAN" "$BLOCKED_DOCUMENT_OWNERSHIP_PLAN" "$BLOCKED_PAGE_RELOAD_PLAN" "$TAB_REPLACEMENT_DESIGN" "$TAB_REPLACEMENT_PLAN" "$CONTENT_OWNED_REDIRECT_PLAN" "$POPUP_TEST" "$CONTENT_SCRIPT_TEST" "$CHECK_BOOTSTRAP" "$MAKE_LAUNCHER" "$NODE_GATE" "$MAKE_LAUNCHER_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -535,7 +536,9 @@ for mutation_ack_source_contract in \
   fi
 done
 
-if [ "$(grep -Fc 'return true;' "$BACKGROUND")" -ne 3 ]; then
+background_message_handler=$(sed -n \
+  '/^function handleBackgroundMessage/,/^function requestChecker/p' "$BACKGROUND")
+if [ "$(printf '%s\n' "$background_message_handler" | grep -Fc 'return true;')" -ne 3 ]; then
   printf '%s\n' "Each accepted asynchronous mutation message must retain its response channel." >&2
   exit 1
 fi
@@ -554,7 +557,7 @@ done
 
 for popup_ack_contract in \
   'response.ok !== true' \
-  'chrome.tabs.sendMessage(tab.id, {action: "redirect", blockedSite: urlToBlock});' \
+  'chrome.tabs.sendMessage(tab.id, {' \
   'tabState = 0;'; do
   if ! grep -Fq "$popup_ack_contract" "$POPUP"; then
     printf '%s\n' "Popup must proceed only after acknowledged mutation success: $popup_ack_contract" >&2
@@ -802,9 +805,9 @@ if ! grep -Fq "if (isValidTabId(tabid))" "$BACKGROUND"; then
   exit 1
 fi
 
-if ! grep -Fq "setPendingTabBlockingState(tabid, normalizedSite)" "$BACKGROUND" || \
+if ! grep -Fq "setPendingTabBlockingState(sender.tab.id, contentOrigin)" "$BACKGROUND" || \
    ! grep -Fq "clearTabBlockingStatesForOrigin(normalizedSite)" "$BACKGROUND"; then
-  printf '%s\n' "Background add/unlist paths must use centralized pending and committed state helpers." >&2
+  printf '%s\n' "Background reservation/unlist paths must use centralized pending and committed state helpers." >&2
   exit 1
 fi
 
@@ -1489,6 +1492,63 @@ for browser_plan_contract in \
   'No unpacked extension, popup, live navigation, Chrome storage, normal-profile, or split-incognito scenario was executed'; do
   if ! grep -Fq "$browser_plan_contract" "$BROWSER_VERIFICATION_PLAN"; then
     printf '%s\n' "Chrome browser plan must keep completion evidence: $browser_plan_contract" >&2
+    exit 1
+  fi
+done
+
+for content_redirect_source_contract in \
+  'function getTrustedContentOrigin(sender) {' \
+  'sender.frameId !== 0' \
+  'message.action === "background:reserveBlockedSite"' \
+  'blockedSites.indexOf(contentOrigin) !== -1' \
+  'setPendingTabBlockingState(sender.tab.id, contentOrigin);' \
+  'action: "background:reserveBlockedSite"' \
+  'response.ok !== true'; do
+  if ! grep -Fq "$content_redirect_source_contract" "$BACKGROUND" "$CONTENT_SCRIPT"; then
+    printf '%s\n' "Missing content-owned redirect contract: $content_redirect_source_contract" >&2
+    exit 1
+  fi
+done
+
+if [ "$(grep -Fc 'message.action === "background:reserveBlockedSite"' "$BACKGROUND")" -ne 2 ]; then
+  printf '%s\n' 'Content-owned reservation must remain both authorized and dispatched.' >&2
+  exit 1
+fi
+
+add_blocked_site_source=$(sed -n '/^function addBlockedSite/,/^function unlistSite/p' "$BACKGROUND")
+if printf '%s\n' "$add_blocked_site_source" | grep -Fq 'setPendingTabBlockingState'; then
+  printf '%s\n' 'Block-list persistence must not grant pending tab ownership.' >&2
+  exit 1
+fi
+
+for content_redirect_test_contract in \
+  'assert.strictEqual(context.pendingTabBlockingMap[14], undefined);' \
+  'action: "background:reserveBlockedSite"' \
+  'senderUrl: "https://other.test"' \
+  'frameId: 1' \
+  'const runtimeMessages = [];' \
+  'reservationResponse = {ok: false};'; do
+  if ! grep -Fq "$content_redirect_test_contract" "$BACKGROUND_TEST" "$CONTENT_SCRIPT_TEST"; then
+    printf '%s\n' "Missing content-owned redirect regression: $content_redirect_test_contract" >&2
+    exit 1
+  fi
+done
+
+for content_redirect_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md" "$ROOT_DIR/VISION.md"; do
+  if ! tr '\n' ' ' < "$content_redirect_doc" | tr -s '[:space:]' ' ' | \
+      grep -Fiq 'top-level content document'; then
+    printf '%s\n' "$content_redirect_doc must document content-owned redirect reservation." >&2
+    exit 1
+  fi
+done
+
+for content_redirect_plan_contract in \
+  'Status: Completed' \
+  'persistence alone creates no pending state' \
+  'wrong-sender' \
+  'Ten isolated hostile source, regression, and plan mutations were rejected.'; do
+  if ! grep -Fq "$content_redirect_plan_contract" "$CONTENT_OWNED_REDIRECT_PLAN"; then
+    printf '%s\n' "Content-owned redirect plan must preserve: $content_redirect_plan_contract" >&2
     exit 1
   fi
 done
