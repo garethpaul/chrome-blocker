@@ -13,8 +13,14 @@
 - Files: `js/background.js`, `scripts/test-background.js`, static and public
   lifecycle contracts, and the tab-replacement design and implementation plans.
 - Validation: focused RED/GREEN Node reproduction completed.
-- Next: validate from a clean committed snapshot, run review and hosted checks,
-  then merge the focused PR.
+- Validation: all direct VM suites and the trusted-snapshot `make check` passed;
+  five hostile mutations were rejected. Hosted Check runs `28213618025` and
+  `28213619042` passed on Node 20, 22, and 24, and CodeQL run `28213618286`
+  passed for Actions and JavaScript/TypeScript.
+- Review: `codex review --base origin/master` was attempted and blocked by
+  OpenAI API HTTP 401; exact-head manual correctness, quality, and security
+  review found no actionable findings.
+- Next: merge PR #20 after its final documentation-only head passes checks.
 
 ## 2026-06-25T21:05:51Z — P1 correctness/security — cycle: blocked-page reload ownership
 

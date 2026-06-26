@@ -1231,9 +1231,12 @@ for replacement_contract in \
   'webNavigation` documentation' \
   'fully loaded or prerendered page' \
   'never copy the old document ID' \
-  '## Status: In Progress' \
+  '## Status: Completed' \
   'Remove only the replaced tab' \
-  'Preserve the replacing tab'; do
+  'Preserve the replacing tab' \
+  'Five isolated hostile mutations were rejected' \
+  '28213618025' \
+  '28213618286'; do
   if ! grep -Fq "$replacement_contract" "$TAB_REPLACEMENT_DESIGN" "$TAB_REPLACEMENT_PLAN"; then
     printf '%s\n' "Tab replacement plans must preserve: $replacement_contract" >&2
     exit 1
