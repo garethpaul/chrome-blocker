@@ -1,5 +1,69 @@
 # Chrome Blocker Changes
 
+## 2026-06-26T06:15:00-0700 — P1 correctness/security — bind redirect reservations to content documents
+
+### Summary
+
+Separated block-list persistence from pending tab authority and made the exact
+current top-level content document reserve its matching origin immediately
+before blocked-page navigation.
+
+### Work completed
+
+- Reproduced that persistence alone created pending authority before any current
+  document approved the redirect.
+- Removed pending-state writes from block-list persistence.
+- Added a content-owned reservation route requiring the exact extension ID,
+  finite sender tab, top-level frame, and matching normalized document origin.
+- Made the content script wait for reservation acknowledgement before navigating.
+- Added missing-tab, subframe, wrong-sender, mismatched-origin, persistence-only,
+  and accepted reservation regressions.
+- Added synchronized guidance, a completed plan, and static contracts.
+
+### Threads
+
+- None; popup, content-script, background, storage, navigation, and existing
+  ownership contracts were reviewed directly.
+
+### Files changed
+
+- `js/contentScript.js` — content-owned reservation before navigation.
+- `js/popup.js` — persisted add followed by the existing content redirect.
+- `js/background.js` — separation of persistence and document-owned reservation.
+- `scripts/test-content-script.js`, `scripts/test-popup.js`, and
+  `scripts/test-background.js` — end-to-end VM regressions.
+- `README.md`, `SECURITY.md`, `VISION.md`, and `AGENTS.md` — public and
+  maintainer lifecycle contract.
+- `docs/plans/2026-06-26-chrome-blocker-content-owned-redirect.md` — decision
+  record.
+- `scripts/check-baseline.sh` — durable source, test, plan, and guidance gates.
+
+### Validation
+
+- RED direct Node suites — persistence still created pending authority and the
+  content script did not reserve through its sender identity.
+- JavaScript syntax checks, all five direct VM suites, the hostile Make-launcher
+  suite, and the static baseline on Node 18.19.1 — passed.
+- Trusted clean-snapshot `make check` — passed.
+- Network-disabled Node 20.20.2, 22.23.1, and 24.18.0 containers — static
+  baseline and all five VM suites passed.
+- Ten isolated hostile source, regression, and plan mutations — all rejected.
+- `git diff --check` — passed.
+
+### Bugs / findings
+
+- P1 correctness/security: block-list persistence granted pending origin
+  authority before any exact current content document approved navigation.
+
+### Blockers
+
+- No browser integration run; VM, launcher, and static validation cover this
+  cycle, while the existing exact-commit browser matrix remains the manual gate.
+
+### Next action
+
+- Complete full verification, exact-head review, hosted CI, and merge.
+
 ## 2026-06-25T21:13:52-0700 — P2 documentation — install and permissions guidance
 
 - Added exact unpacked-install steps for a compatible isolated Chrome profile

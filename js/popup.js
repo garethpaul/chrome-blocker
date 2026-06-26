@@ -58,7 +58,10 @@ function blacklistSite() {
             mutationResponse.ok !== true) {
           return;
         }
-        chrome.tabs.sendMessage(tab.id, {action: "redirect", blockedSite: urlToBlock});
+        chrome.tabs.sendMessage(tab.id, {
+          action: "redirect",
+          blockedSite: urlToBlock
+        });
       });
     });
   });

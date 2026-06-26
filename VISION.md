@@ -41,6 +41,7 @@ Priority:
 - Blocked-page unlist mutations require a reserved top-level redirect and the exact committed document ID; subframes, stale documents, and replacement navigations fail closed.
 - Reloading the canonical blocked page preserves its blocked origin while replacing the authorized document ID.
 - Content-script URL reads and redirects require exact popup sender and current-document origin ownership.
+- Let only the exact current top-level content document reserve pending tab/origin ownership
 - Keep blocked-page redirects scoped to the guarded unlist path
 - Keep popup actions scoped to a valid active tab id
 - Validate redirect message payloads before constructing extension URLs

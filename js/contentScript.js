@@ -16,10 +16,23 @@ chrome.runtime.onMessage.addListener(
     var blockedSite = normalizeBlockedOrigin(request.blockedSite);
     var currentSite = normalizeBlockedOrigin(document.location.href);
     if (blockedSite === "" || currentSite !== blockedSite) {
+      sendResponse({ok: false});
       return;
     }
 
-    window.location = chrome.runtime.getURL(
-      "blockedSite.html?blocked=" + encodeURIComponent(blockedSite));
+    chrome.runtime.sendMessage({
+      action: "background:reserveBlockedSite",
+      blockedSite: blockedSite
+    }, function(response) {
+      if (chrome.runtime.lastError || !response || response.ok !== true) {
+        sendResponse({ok: false});
+        return;
+      }
+
+      sendResponse({ok: true});
+      window.location = chrome.runtime.getURL(
+        "blockedSite.html?blocked=" + encodeURIComponent(blockedSite));
+    });
+    return true;
   }
 });

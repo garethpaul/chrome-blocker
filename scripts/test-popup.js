@@ -53,7 +53,9 @@ const context = {
       sendMessage(tabId, message, callback) {
         tabMessages.push({tabId, message: JSON.parse(JSON.stringify(message))});
         if (callback) {
-          callback({URL: "https://Example.com/private"});
+          if (message.action === "geturl") {
+            callback({URL: "https://Example.com/private"});
+          }
         }
       }
     }
@@ -95,6 +97,7 @@ assert.deepStrictEqual(tabMessages, [
     message: {action: "redirect", blockedSite: "https://example.com"}
   }
 ]);
+assert.strictEqual(runtimeMessages.length, 0);
 
 tabMessages.length = 0;
 mutationResponse = {ok: false};

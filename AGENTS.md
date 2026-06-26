@@ -53,6 +53,7 @@
 - Popup-to-blocked-page unlist requests are typed and must match both the current numeric tab id and normalized blocked origin.
 - Background tab blocking state is removed when tabs close and ignores invalid non-tab navigation ids.
 - The content-script redirect messages are normalized before constructing `blockedSite.html` URLs.
+- Block-list persistence must not reserve pending tab/origin authority; only the exact current top-level content document may reserve its matching origin immediately before blocked-page navigation.
 - The background context owns block-list storage writes; popup and blocked-site
   pages use validated same-extension runtime messages instead of direct global
   object access.

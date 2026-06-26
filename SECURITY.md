@@ -52,6 +52,9 @@ Helpful reports include:
 - Only the exact popup extension page may start the blocked-page unlist countdown.
 - Popup routes and blocked-page unlist routes use separate exact sender authorization.
 - Content-script URL reads and redirects require exact popup sender and current-document origin ownership.
+- Persisting a blocked origin must not reserve pending tab/origin authority;
+  only the exact current top-level content document may reserve its matching
+  origin immediately before the blocked-page navigation.
 - Blocked-page unlist mutations require exact blocked-origin and sender-tab ownership.
 - Blocked-page unlist mutations also require the sender tab's current blocked-origin state to match the requested origin.
 - Blocked-page unlist mutations require a reserved top-level redirect and the exact committed document ID; subframes, stale documents, and replacement navigations fail closed.
