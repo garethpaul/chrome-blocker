@@ -1,5 +1,21 @@
 # Chrome Blocker Changes
 
+## 2026-06-25T21:13:52-0700 — P2 documentation — install and permissions guidance
+
+- Added exact unpacked-install steps for a compatible isolated Chrome profile
+  and an explicit warning that current Chrome builds may reject this legacy
+  Manifest V2 extension.
+- Documented the purpose of HTTP(S) host access, tabs, storage, blocking web
+  requests, navigation lifecycle events, the blocked-page resource, and split
+  incognito mode from the checked-in manifest and runtime usage, including the
+  shared `chrome.storage.local` boundary documented by Chrome.
+- Clarified that portable Node checks do not prove browser compatibility and
+  linked installed-extension testing to the exact-commit verification matrix.
+- Privacy: documented local-only block-list state and the absence of telemetry,
+  remote configuration, and synced block lists.
+- Validation: 16 mutation-sensitive baseline contracts protect the compatibility
+  warning, permission rationale, privacy boundary, and completed plan evidence.
+
 ## 2026-06-26T04:07:05Z — P1 correctness/security — allowed navigation commit ownership
 
 - Bug fixed: an allowed main-frame request eagerly cleared the currently
