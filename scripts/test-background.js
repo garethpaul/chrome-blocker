@@ -372,6 +372,38 @@ listeners.onCommitted({
 });
 assert.strictEqual(context.getTabState(16), 0);
 
+context.addBlockedSite(24, "https://example.com/blocked");
+listeners.onCommitted({
+  tabId: 24,
+  frameId: 0,
+  documentId: "blocked-before-allowed-navigation",
+  url: "chrome-extension://test/blockedSite.html?blocked=" +
+    encodeURIComponent("https://example.com")
+});
+context.setPendingTabBlockingState(24, "https://superseded.test");
+assert.strictEqual(
+  listeners.onBeforeRequest({
+    tabId: 24,
+    type: "main_frame",
+    url: "https://allowed.test/might-fail"
+  }),
+  undefined
+);
+assert.strictEqual(context.getTabState(24), "https://example.com");
+assert.strictEqual(
+  context.tabBlockingDocumentMap[24],
+  "blocked-before-allowed-navigation"
+);
+assert.strictEqual(context.pendingTabBlockingMap[24], undefined);
+listeners.onCommitted({
+  tabId: 24,
+  frameId: 0,
+  documentId: "allowed-navigation-document",
+  url: "https://allowed.test/might-fail"
+});
+assert.strictEqual(context.getTabState(24), 0);
+assert.strictEqual(context.tabBlockingDocumentMap[24], undefined);
+
 assert.strictEqual(
   listeners.onBeforeRequest({
     tabId: 6,

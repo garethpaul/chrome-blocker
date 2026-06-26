@@ -191,6 +191,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - A tab becomes blocked state only after the reserved blocked-page redirect commits
   in the top-level frame; unrelated top-level commits clear pending and committed ownership.
 - Reloading the canonical blocked page preserves its blocked origin while replacing the authorized document ID.
+- Starting an allowed navigation clears only pending redirect state; the visible blocked page keeps unlist authority until another top-level document commits.
 - A global unlisting clears matching state across every tracked tab while
   preserving tabs blocked by other origins.
 - The blocked page validates the current tab before unlisting a site or showing

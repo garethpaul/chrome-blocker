@@ -46,6 +46,7 @@
 - Blocked-page unlist mutations require a reserved top-level redirect and the exact committed document ID; subframes, stale documents, and replacement navigations fail closed.
 - Reloading the canonical blocked page preserves its blocked origin while replacing the authorized document ID.
 - Tab replacement clears the replaced tab's committed and pending ownership without copying its blocked origin or document ID into the replacing tab.
+- Allowed navigation requests clear only pending redirect state; committed blocked-page ownership remains until a new top-level document commits.
 
 - Detected references to Twitter. Keep API keys, OAuth credentials, tokens, and account-specific values in local configuration only.
 - The blocked-page unblock countdown clears any prior interval before starting a new timer and resets interval state when the modal closes.

@@ -1,5 +1,19 @@
 # Chrome Blocker Changes
 
+## 2026-06-26T04:07:05Z — P1 correctness/security — allowed navigation commit ownership
+
+- Bug fixed: an allowed main-frame request eagerly cleared the currently
+  committed blocked origin and document ID before the replacement navigation
+  committed, so cancelled or failed navigation left the visible blocked page
+  unable to unlist its site.
+- Behavior: allowed request start now clears only superseded pending redirect
+  state; `webNavigation.onCommitted` remains the authority that retires the
+  displayed blocked document.
+- Tests: the background VM proves committed origin/document retention, pending
+  cleanup, and final cleanup after an allowed top-level commit.
+- Validation: RED reproduced the premature authority loss; focused background
+  and static baseline checks pass after the pending-only cleanup.
+
 ## 2026-06-25T19:47:00-0700 — P1 security — tab replacement ownership
 
 - Bug fixed: `webNavigation.onTabReplaced` copied a replaced tab's blocked
