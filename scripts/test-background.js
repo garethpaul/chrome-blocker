@@ -545,11 +545,65 @@ listeners.onCommitted({tabId: 8, frameId: 0, documentId: "allowed-document",
 assert.strictEqual(context.getTabState(8), 0);
 
 listeners.onTabReplaced({tabId: 9, replacedTabId: 7});
-assert.strictEqual(context.getTabState(9), "https://example.com");
+assert.strictEqual(context.getTabState(9), 0);
+assert.strictEqual(context.tabBlockingDocumentMap[9], undefined);
 assert.strictEqual(context.getTabState(7), 0);
+
+context.addBlockedSite(18, "https://example.com/old");
+listeners.onCommitted({
+  tabId: 18,
+  frameId: 0,
+  documentId: "old-replaced-document",
+  url: "chrome-extension://test/blockedSite.html?blocked=" +
+    encodeURIComponent("https://example.com")
+});
+context.addBlockedSite(19, "https://example.com/new");
+listeners.onCommitted({
+  tabId: 19,
+  frameId: 0,
+  documentId: "new-replacing-document",
+  url: "chrome-extension://test/blockedSite.html?blocked=" +
+    encodeURIComponent("https://example.com")
+});
+listeners.onTabReplaced({tabId: 19, replacedTabId: 18});
+assert.strictEqual(context.getTabState(18), 0);
+assert.strictEqual(context.getTabState(19), "https://example.com");
+assert.strictEqual(context.tabBlockingDocumentMap[19], "new-replacing-document");
 
 listeners.onTabReplaced({tabId: 10, replacedTabId: -1});
 assert.strictEqual(context.getTabState(10), 0);
+
+context.addBlockedSite(20, "https://example.com/stale");
+listeners.onCommitted({
+  tabId: 20,
+  frameId: 0,
+  documentId: "stale-replaced-document",
+  url: "chrome-extension://test/blockedSite.html?blocked=" +
+    encodeURIComponent("https://example.com")
+});
+listeners.onTabReplaced({tabId: -1, replacedTabId: 20});
+assert.strictEqual(context.getTabState(20), 0);
+
+context.addBlockedSite(21, "https://example.com/self");
+listeners.onCommitted({
+  tabId: 21,
+  frameId: 0,
+  documentId: "self-replacement-document",
+  url: "chrome-extension://test/blockedSite.html?blocked=" +
+    encodeURIComponent("https://example.com")
+});
+listeners.onTabReplaced({tabId: 21, replacedTabId: 21});
+assert.strictEqual(context.getTabState(21), "https://example.com");
+assert.strictEqual(
+  context.tabBlockingDocumentMap[21],
+  "self-replacement-document"
+);
+
+context.addBlockedSite(22, "https://example.com/pending");
+assert.strictEqual(context.pendingTabBlockingMap[22], "https://example.com");
+listeners.onTabReplaced({tabId: 23, replacedTabId: 22});
+assert.strictEqual(context.pendingTabBlockingMap[22], undefined);
+assert.strictEqual(context.getTabState(23), 0);
 
 listeners.onRemoved(9);
 assert.strictEqual(context.getTabState(9), 0);
