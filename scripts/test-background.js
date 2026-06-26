@@ -599,6 +599,12 @@ assert.strictEqual(
   "self-replacement-document"
 );
 
+context.addBlockedSite(22, "https://example.com/pending");
+assert.strictEqual(context.pendingTabBlockingMap[22], "https://example.com");
+listeners.onTabReplaced({tabId: 23, replacedTabId: 22});
+assert.strictEqual(context.pendingTabBlockingMap[22], undefined);
+assert.strictEqual(context.getTabState(23), 0);
+
 listeners.onRemoved(9);
 assert.strictEqual(context.getTabState(9), 0);
 

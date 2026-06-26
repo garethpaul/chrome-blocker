@@ -980,6 +980,8 @@ if ! grep -Fq 'listeners.onCommitted({tabId: 8, frameId: 0' "$BACKGROUND_TEST" |
    ! grep -Fq 'listeners.onTabReplaced({tabId: -1, replacedTabId: 20});' "$BACKGROUND_TEST" || \
    ! grep -Fq 'listeners.onTabReplaced({tabId: 21, replacedTabId: 21});' "$BACKGROUND_TEST" || \
    ! grep -Fq '"self-replacement-document"' "$BACKGROUND_TEST" || \
+   ! grep -Fq 'listeners.onTabReplaced({tabId: 23, replacedTabId: 22});' "$BACKGROUND_TEST" || \
+   ! grep -Fq 'assert.strictEqual(context.pendingTabBlockingMap[22], undefined);' "$BACKGROUND_TEST" || \
    ! grep -Fq 'listeners.onRemoved(9);' "$BACKGROUND_TEST"; then
   printf '%s\n' "Background tests must execute tab initialization, replacement, and cleanup listeners." >&2
   exit 1

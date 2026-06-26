@@ -7,6 +7,7 @@
 - Assert old committed state is not transferred to the replacing tab.
 - Assert independently committed replacing-tab state remains unchanged.
 - Assert malformed self-replacement events cannot clear valid tab ownership.
+- Assert the replaced tab's pending redirect reservation is removed.
 
 ### Task 2: Fix lifecycle ownership
 

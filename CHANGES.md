@@ -9,7 +9,7 @@
   the old tab when the new tab ID in an event payload is invalid.
 - Tests: real background VM regressions cover stale authority transfer,
   replacing-tab ownership preservation, malformed-event cleanup, and
-  self-replacement preservation.
+  self-replacement preservation, plus old pending-reservation removal.
 - Files: `js/background.js`, `scripts/test-background.js`, static and public
   lifecycle contracts, and the tab-replacement design and implementation plans.
 - Validation: focused RED/GREEN Node reproduction completed.
