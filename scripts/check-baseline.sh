@@ -39,12 +39,14 @@ CONTENT_MESSAGE_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-c
 UNLIST_STATE_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-17-chrome-blocker-unlist-state-ownership.md"
 BLOCKED_DOCUMENT_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-19-chrome-blocker-blocked-document-ownership.md"
 BLOCKED_PAGE_RELOAD_PLAN="$ROOT_DIR/docs/plans/2026-06-25-chrome-blocker-blocked-page-reload.md"
+TAB_REPLACEMENT_DESIGN="$ROOT_DIR/docs/plans/2026-06-25-chrome-blocker-tab-replacement-design.md"
+TAB_REPLACEMENT_PLAN="$ROOT_DIR/docs/plans/2026-06-25-chrome-blocker-tab-replacement.md"
 MAKE_LAUNCHER="$ROOT_DIR/scripts/run-make.js"
 NODE_GATE="$ROOT_DIR/scripts/run-node-gate.js"
 MAKE_LAUNCHER_TEST="$ROOT_DIR/scripts/test-make-launcher.js"
 CHECK_BOOTSTRAP="$ROOT_DIR/scripts/check"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$UNLIST_SENDER_PLAN" "$BACKGROUND_ROUTE_PLAN" "$UNLIST_TAB_OWNERSHIP_PLAN" "$CONTENT_MESSAGE_OWNERSHIP_PLAN" "$UNLIST_STATE_OWNERSHIP_PLAN" "$BLOCKED_DOCUMENT_OWNERSHIP_PLAN" "$BLOCKED_PAGE_RELOAD_PLAN" "$POPUP_TEST" "$CONTENT_SCRIPT_TEST" "$CHECK_BOOTSTRAP" "$MAKE_LAUNCHER" "$NODE_GATE" "$MAKE_LAUNCHER_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$UNLIST_SENDER_PLAN" "$BACKGROUND_ROUTE_PLAN" "$UNLIST_TAB_OWNERSHIP_PLAN" "$CONTENT_MESSAGE_OWNERSHIP_PLAN" "$UNLIST_STATE_OWNERSHIP_PLAN" "$BLOCKED_DOCUMENT_OWNERSHIP_PLAN" "$BLOCKED_PAGE_RELOAD_PLAN" "$TAB_REPLACEMENT_DESIGN" "$TAB_REPLACEMENT_PLAN" "$POPUP_TEST" "$CONTENT_SCRIPT_TEST" "$CHECK_BOOTSTRAP" "$MAKE_LAUNCHER" "$NODE_GATE" "$MAKE_LAUNCHER_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
     exit 1
@@ -795,9 +797,10 @@ if ! grep -Fq "chrome.tabs.onRemoved.addListener(removeTabBlockingState)" "$BACK
 fi
 
 if ! grep -Fq "setTabBlockingState(details.tabId, blockedOrigin, details.documentId)" "$BACKGROUND" || \
-   ! grep -Fq "setTabBlockingState(details.tabId, getTabState(details.replacedTabId)," "$BACKGROUND" || \
-   ! grep -Fq "removeTabBlockingState(details.replacedTabId)" "$BACKGROUND"; then
-  printf '%s\n' "Background navigation and replacement paths must preserve committed document ownership." >&2
+   ! grep -Fq "details.replacedTabId !== details.tabId" "$BACKGROUND" || \
+   ! grep -Fq "removeTabBlockingState(details.replacedTabId)" "$BACKGROUND" || \
+   grep -Fq "getTabState(details.replacedTabId)" "$BACKGROUND"; then
+  printf '%s\n' "Background replacement handling must clean old ownership without transferring it." >&2
   exit 1
 fi
 
@@ -972,6 +975,11 @@ fi
 
 if ! grep -Fq 'listeners.onCommitted({tabId: 8, frameId: 0' "$BACKGROUND_TEST" || \
    ! grep -Fq 'listeners.onTabReplaced({tabId: 9, replacedTabId: 7});' "$BACKGROUND_TEST" || \
+   ! grep -Fq 'assert.strictEqual(context.tabBlockingDocumentMap[9], undefined);' "$BACKGROUND_TEST" || \
+   ! grep -Fq 'assert.strictEqual(context.tabBlockingDocumentMap[19], "new-replacing-document");' "$BACKGROUND_TEST" || \
+   ! grep -Fq 'listeners.onTabReplaced({tabId: -1, replacedTabId: 20});' "$BACKGROUND_TEST" || \
+   ! grep -Fq 'listeners.onTabReplaced({tabId: 21, replacedTabId: 21});' "$BACKGROUND_TEST" || \
+   ! grep -Fq '"self-replacement-document"' "$BACKGROUND_TEST" || \
    ! grep -Fq 'listeners.onRemoved(9);' "$BACKGROUND_TEST"; then
   printf '%s\n' "Background tests must execute tab initialization, replacement, and cleanup listeners." >&2
   exit 1
@@ -1211,10 +1219,24 @@ if ! grep -Fq "background add and unblock paths use centralized tab state writes
   exit 1
 fi
 
-if ! grep -Fq "navigation, replacement, and removal paths use centralized tab state helpers" "$README"; then
+if ! grep -Fq "tab replacement clears only the replaced tab's ownership" "$README"; then
   printf '%s\n' "README must document centralized tab lifecycle state ownership." >&2
   exit 1
 fi
+
+for replacement_contract in \
+  '## Status: Accepted' \
+  'webNavigation` documentation' \
+  'fully loaded or prerendered page' \
+  'never copy the old document ID' \
+  '## Status: In Progress' \
+  'Remove only the replaced tab' \
+  'Preserve the replacing tab'; do
+  if ! grep -Fq "$replacement_contract" "$TAB_REPLACEMENT_DESIGN" "$TAB_REPLACEMENT_PLAN"; then
+    printf '%s\n' "Tab replacement plans must preserve: $replacement_contract" >&2
+    exit 1
+  fi
+done
 
 if ! grep -Fq "global unlisting clears matching state across every tracked tab" "$README" || \
    ! grep -Fq "origin-wide tab-state cleanup" "$ROOT_DIR/VISION.md" || \

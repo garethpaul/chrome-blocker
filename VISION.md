@@ -26,6 +26,7 @@ Priority:
 - Keep background tab-state writes behind the valid-tab-id helper
 - Chrome Blocker accepts only finite integer tab IDs at runtime boundaries.
 - Keep tab navigation, replacement, and removal lifecycle behavior executable
+- Keep tab replacement from transferring document authority between different tab contents
 - Keep global origin-wide tab-state cleanup consistent across open tabs
 - Keep request interception scoped to main-frame navigations with valid tab ids
 - Keep fail-closed block-list startup hydration ahead of origin matching

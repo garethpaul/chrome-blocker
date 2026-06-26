@@ -1,5 +1,21 @@
 # Chrome Blocker Changes
 
+## 2026-06-25T19:47:00-0700 — P1 security — tab replacement ownership
+
+- Bug fixed: `webNavigation.onTabReplaced` copied a replaced tab's blocked
+  origin and committed document ID into different replacing contents.
+- Behavior: replacement now removes only the old tab's committed and pending
+  state, preserves independently recorded replacing-tab state, and still cleans
+  the old tab when the new tab ID in an event payload is invalid.
+- Tests: real background VM regressions cover stale authority transfer,
+  replacing-tab ownership preservation, malformed-event cleanup, and
+  self-replacement preservation.
+- Files: `js/background.js`, `scripts/test-background.js`, static and public
+  lifecycle contracts, and the tab-replacement design and implementation plans.
+- Validation: focused RED/GREEN Node reproduction completed.
+- Next: validate from a clean committed snapshot, run review and hosted checks,
+  then merge the focused PR.
+
 ## 2026-06-25T21:05:51Z — P1 correctness/security — cycle: blocked-page reload ownership
 
 - Threads: inspected the explicit MIT license, default branch, open pull

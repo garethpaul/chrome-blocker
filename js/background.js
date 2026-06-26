@@ -314,21 +314,13 @@ function updateMapping(details) {
 }
 
 function updateReplacedTabMapping(details) {
-  if (!details || !isValidTabId(details.tabId)) {
+  if (!details) {
     return;
   }
 
-  if (isValidTabId(details.replacedTabId)) {
-    setTabBlockingState(details.tabId, getTabState(details.replacedTabId),
-        tabBlockingDocumentMap[details.replacedTabId]);
-    if (Object.prototype.hasOwnProperty.call(
-        pendingTabBlockingMap, details.replacedTabId)) {
-      setPendingTabBlockingState(
-          details.tabId, pendingTabBlockingMap[details.replacedTabId]);
-    }
+  if (isValidTabId(details.replacedTabId) &&
+      details.replacedTabId !== details.tabId) {
     removeTabBlockingState(details.replacedTabId);
-  } else {
-    updateMapping(details);
   }
 }
 
