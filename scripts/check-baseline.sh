@@ -717,6 +717,13 @@ if ! grep -Fq "setPendingTabBlockingState(request.tabId, tabBlockingState)" "$BA
   exit 1
 fi
 
+if ! grep -Fq "function clearPendingTabBlockingState(tabid)" "$BACKGROUND" || \
+   ! grep -Fq "clearPendingTabBlockingState(request.tabId)" "$BACKGROUND" || \
+   grep -Fq "removeTabBlockingState(request.tabId)" "$BACKGROUND"; then
+  printf '%s\n' "Allowed request start must clear only pending state until top-level commit." >&2
+  exit 1
+fi
+
 if ! grep -Fq "function isValidTabId(tabid)" "$BACKGROUND"; then
   printf '%s\n' "Background state must centralize valid tab id checks." >&2
   exit 1
@@ -974,6 +981,9 @@ if ! grep -Fq 'assert.strictEqual(context.getTabState(12), 0);' "$BACKGROUND_TES
 fi
 
 if ! grep -Fq 'listeners.onCommitted({tabId: 8, frameId: 0' "$BACKGROUND_TEST" || \
+   ! grep -Fq '"blocked-before-allowed-navigation"' "$BACKGROUND_TEST" || \
+   ! grep -Fq 'assert.strictEqual(context.getTabState(24), "https://example.com");' "$BACKGROUND_TEST" || \
+   ! grep -Fq 'assert.strictEqual(context.pendingTabBlockingMap[24], undefined);' "$BACKGROUND_TEST" || \
    ! grep -Fq 'listeners.onTabReplaced({tabId: 9, replacedTabId: 7});' "$BACKGROUND_TEST" || \
    ! grep -Fq 'assert.strictEqual(context.tabBlockingDocumentMap[9], undefined);' "$BACKGROUND_TEST" || \
    ! grep -Fq 'assert.strictEqual(context.tabBlockingDocumentMap[19], "new-replacing-document");' "$BACKGROUND_TEST" || \

@@ -167,6 +167,12 @@ function setPendingTabBlockingState(tabid, tabBlockingState) {
   }
 }
 
+function clearPendingTabBlockingState(tabid) {
+  if (isValidTabId(tabid)) {
+    delete pendingTabBlockingMap[tabid];
+  }
+}
+
 function removeTabBlockingState(tabid) {
   if (isValidTabId(tabid)) {
     delete tabBlockingMap[tabid];
@@ -291,7 +297,7 @@ function requestChecker(request) {
     return { redirectUrl: redirectUrl };
   }
 
-  removeTabBlockingState(request.tabId);
+  clearPendingTabBlockingState(request.tabId);
 }
 
 chrome.webRequest.onBeforeRequest.addListener(

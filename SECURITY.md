@@ -56,6 +56,7 @@ Helpful reports include:
 - Blocked-page unlist mutations also require the sender tab's current blocked-origin state to match the requested origin.
 - Blocked-page unlist mutations require a reserved top-level redirect and the exact committed document ID; subframes, stale documents, and replacement navigations fail closed.
 - Reloading the canonical blocked page preserves its blocked origin while replacing the authorized document ID.
+- Allowed request start must not revoke the currently committed blocked document; ownership retires only when a replacement top-level document commits.
 - Tab replacement never transfers a replaced document's blocked origin or document ID; it clears the old tab and preserves independently committed replacing-tab ownership.
 
 ## Service and API Notes
