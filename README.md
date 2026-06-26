@@ -31,6 +31,7 @@ Additional scan context:
 ### Prerequisites
 
 - Git
+- A Chrome or Chromium build that still permits unpacked Manifest V2
 
 ### Setup
 
@@ -39,15 +40,49 @@ git clone https://github.com/garethpaul/chrome-blocker.git
 cd chrome-blocker
 ```
 
-The setup commands above are derived from repository files. Legacy mobile, Python, or JavaScript samples may require older SDKs or package versions than a modern workstation uses by default.
+This repository still uses Manifest V2. Current Chrome releases are removing or
+disabling Manifest V2 support. Chrome may reject the extension before installation
+even when the repository is configured correctly. Migrating to
+Manifest V3 is tracked separately in [`VISION.md`](VISION.md); do not weaken
+browser security settings or use a daily browsing profile just to load this
+legacy extension.
 
 ## Running or Using the Project
 
-Load the extension unpacked from this directory:
+In a compatible, isolated test profile, load the extension unpacked from this
+directory:
 
 1. Open `chrome://extensions`.
-2. Enable developer mode.
-3. Choose "Load unpacked" and select this repository root.
+2. Enable **Developer mode**.
+3. Choose **Load unpacked** and select this repository root, which contains
+   `manifest.json`.
+4. Open the extension popup to add or remove a site. The block list is stored
+   locally through `chrome.storage.local`.
+
+Use synthetic sites and follow the exact-commit checklist in
+[`BROWSER_VERIFICATION.md`](BROWSER_VERIFICATION.md) for installed-extension
+testing. The portable Node checks below do not prove that a particular Chrome
+release can install or run Manifest V2.
+
+### Permissions and Privacy
+
+The checked-in manifest requests only the browser access used by the current
+implementation:
+
+| Manifest access | Why it is required |
+| --- | --- |
+| `http://*/*` and `https://*/*` | Runs the content script on web pages and lets the background request listener compare top-level HTTP(S) navigations with the local block list. Other URL schemes are not requested. |
+| `tabs` | Finds the active tab for popup actions and keeps blocked-page ownership scoped to the correct finite tab ID. |
+| `storage` | Persists the normalized block list in `chrome.storage.local`. |
+| `webRequest` and `webRequestBlocking` | Observes and synchronously redirects blocked top-level requests under the legacy Manifest V2 design. |
+| `webNavigation` | Tracks committed top-level documents and tab replacement so stale blocked-page authority is removed. |
+| `blockedSite.html` as a web-accessible resource | Displays the local extension-owned blocked page after a guarded redirect. |
+| `incognito: split` | Runs extension pages and the background page in a separate incognito process with separate in-memory state and event visibility. Chrome still requires the user to explicitly enable incognito access, while [`chrome.storage.local` remains shared](https://developer.chrome.com/docs/extensions/reference/manifest/incognito) between regular and incognito processes. |
+
+The extension does not add telemetry, remote configuration, or synced block lists.
+Visited URLs, block-list entries, and tab state remain within the local
+browser extension APIs. Review [`SECURITY.md`](SECURITY.md) before changing
+host access, message boundaries, persistence, or navigation interception.
 
 ## Testing and Verification
 

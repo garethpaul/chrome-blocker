@@ -32,6 +32,7 @@ CONTENT_SCRIPT_TEST="$ROOT_DIR/scripts/test-content-script.js"
 MUTATION_ACK_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-mutation-acknowledgement.md"
 INTEGER_TAB_ID_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-integer-tab-ids.md"
 BROWSER_VERIFICATION_PLAN="$ROOT_DIR/docs/plans/2026-06-14-chrome-blocker-browser-verification.md"
+README_INSTALL_PLAN="$ROOT_DIR/docs/plans/2026-06-25-chrome-blocker-install-permissions.md"
 UNLIST_SENDER_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-unlist-sender-guard.md"
 BACKGROUND_ROUTE_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-background-route-authorization.md"
 UNLIST_TAB_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-15-chrome-blocker-unlist-tab-ownership.md"
@@ -46,9 +47,39 @@ NODE_GATE="$ROOT_DIR/scripts/run-node-gate.js"
 MAKE_LAUNCHER_TEST="$ROOT_DIR/scripts/test-make-launcher.js"
 CHECK_BOOTSTRAP="$ROOT_DIR/scripts/check"
 
-for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$UNLIST_SENDER_PLAN" "$BACKGROUND_ROUTE_PLAN" "$UNLIST_TAB_OWNERSHIP_PLAN" "$CONTENT_MESSAGE_OWNERSHIP_PLAN" "$UNLIST_STATE_OWNERSHIP_PLAN" "$BLOCKED_DOCUMENT_OWNERSHIP_PLAN" "$BLOCKED_PAGE_RELOAD_PLAN" "$TAB_REPLACEMENT_DESIGN" "$TAB_REPLACEMENT_PLAN" "$POPUP_TEST" "$CONTENT_SCRIPT_TEST" "$CHECK_BOOTSTRAP" "$MAKE_LAUNCHER" "$NODE_GATE" "$MAKE_LAUNCHER_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
+for path in "$MANIFEST" "$BACKGROUND" "$POPUP" "$CONTENT_SCRIPT" "$BLOCKED_SITE" "$URL_RULES" "$README" "$PLAN" "$BLOCKED_PAGE_TAB_PLAN" "$BLOCKED_PAGE_REDIRECT_PLAN" "$POPUP_TAB_PLAN" "$HOST_PERMISSION_PLAN" "$CREDENTIAL_URL_PLAN" "$CI_PLAN" "$CI_WORKFLOW" "$NON_TAB_REQUEST_PLAN" "$BACKGROUND_TEST" "$TAB_LIFECYCLE_PLAN" "$CHECKOUT_CREDENTIAL_PLAN" "$GLOBAL_UNLIST_PLAN" "$UNLIST_MESSAGE_PLAN" "$BLOCKED_SITE_TEST" "$STARTUP_HYDRATION_PLAN" "$HYDRATION_MUTATION_PLAN" "$RUNTIME_MESSAGE_PLAN" "$MUTATION_ACK_PLAN" "$INTEGER_TAB_ID_PLAN" "$BROWSER_VERIFICATION_PLAN" "$README_INSTALL_PLAN" "$UNLIST_SENDER_PLAN" "$BACKGROUND_ROUTE_PLAN" "$UNLIST_TAB_OWNERSHIP_PLAN" "$CONTENT_MESSAGE_OWNERSHIP_PLAN" "$UNLIST_STATE_OWNERSHIP_PLAN" "$BLOCKED_DOCUMENT_OWNERSHIP_PLAN" "$BLOCKED_PAGE_RELOAD_PLAN" "$TAB_REPLACEMENT_DESIGN" "$TAB_REPLACEMENT_PLAN" "$POPUP_TEST" "$CONTENT_SCRIPT_TEST" "$CHECK_BOOTSTRAP" "$MAKE_LAUNCHER" "$NODE_GATE" "$MAKE_LAUNCHER_TEST" "$ROOT_DIR/CHANGES.md" "$ROOT_DIR/scripts/test-url-rules.js"; do
   if [ ! -f "$path" ]; then
     printf '%s\n' "Required baseline file is missing: $path" >&2
+    exit 1
+  fi
+done
+
+for readme_install_contract in \
+  'This repository still uses Manifest V2.' \
+  'Chrome may reject the extension before installation' \
+  '| `http://*/*` and `https://*/*` | Runs the content script' \
+  '| `tabs` | Finds the active tab' \
+  '| `storage` | Persists the normalized block list' \
+  '| `webRequest` and `webRequestBlocking` | Observes and synchronously redirects' \
+  '| `webNavigation` | Tracks committed top-level documents' \
+  '| `incognito: split` | Runs extension pages and the background page in a separate incognito process' \
+  '`chrome.storage.local` remains shared' \
+  'does not add telemetry, remote configuration, or synced block lists' \
+  '[`BROWSER_VERIFICATION.md`](BROWSER_VERIFICATION.md) for installed-extension'; do
+  if ! grep -Fq "$readme_install_contract" "$README"; then
+    printf '%s\n' "README must keep install and permission guidance: $readme_install_contract" >&2
+    exit 1
+  fi
+done
+
+for readme_plan_contract in \
+  'Status: Completed' \
+  'Add a Manifest V2 compatibility warning without claiming' \
+  'Document a permission rationale for HTTP(S) host access' \
+  'Sixteen isolated hostile mutations of the Manifest V2 compatibility warning' \
+  '`sh scripts/check-baseline.sh` and `make check` passed'; do
+  if ! grep -Fq "$readme_plan_contract" "$README_INSTALL_PLAN"; then
+    printf '%s\n' "README install plan must keep completion evidence: $readme_plan_contract" >&2
     exit 1
   fi
 done

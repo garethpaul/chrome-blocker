@@ -55,7 +55,8 @@ Next priorities:
 
 - Complete the remaining Chrome Blocker browser verification matrix rows against
   exact commits in isolated Chrome profiles
-- Add README setup, install, and permissions notes
+- Keep README setup, Manifest compatibility, install, and permissions notes
+  aligned with the checked-in manifest and browser verification matrix
 - Migrate from Manifest V2 to a maintained Manifest V3 design
 - Improve URL matching so blocked-site rules are predictable and safe
 - Add tests or manual verification steps for add/remove/block flows
