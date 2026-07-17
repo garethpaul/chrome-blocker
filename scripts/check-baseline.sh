@@ -1175,7 +1175,9 @@ for gate_contract in \
   'crypto.timingSafeEqual' \
   'fs.realpathSync(process.cwd())' \
   "path.join(root, 'scripts', 'check-baseline.sh')" \
+  "'test-url-rules.js'" \
   "'test-background.js'" \
+  "'test-blocked-site.js'" \
   'shell: false'; do
   if ! grep -Fq "$gate_contract" "$NODE_GATE"; then
     printf '%s\n' "Node gate must retain contract: $gate_contract" >&2
