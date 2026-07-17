@@ -10,9 +10,67 @@ const {
 } = require("../js/urlRules");
 
 const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "manifest.json"), "utf8"));
-assert.ok(!manifest.permissions.includes("*://*/*"));
-assert.ok(manifest.permissions.includes("http://*/*"));
-assert.ok(manifest.permissions.includes("https://*/*"));
+
+// The granted permission scope is a security boundary, so assert the exact
+// effective set that JSON.parse (and therefore Chrome) resolves rather than the
+// presence of individual spellings. Presence checks and a denylist of one
+// spelling cannot see a permission that is ADDED in a different spelling:
+// "<all_urls>" is strictly wider than the rejected "*://*/*" yet satisfies
+// both. Comparing the parsed value also resolves duplicate "permissions" keys
+// to the last-wins block that Chrome actually honors, which no text scan of
+// manifest.json can observe.
+function assertExactSet(actual, expected, label) {
+  assert.ok(Array.isArray(actual), label + " must be an array");
+  assert.deepStrictEqual([...actual].sort(), [...expected].sort(), label);
+}
+
+// Bound the manifest to a closed set of top-level keys. Enumerating only the
+// fields known to be dangerous today is an open-ended denylist: "permissions"
+// is not the only scope-granting channel ("optional_permissions" is grantable
+// at runtime via chrome.permissions.request), so any newly introduced key must
+// fail here and be reviewed deliberately rather than pass unseen.
+assertExactSet(
+  Object.keys(manifest),
+  [
+    "name",
+    "version",
+    "manifest_version",
+    "description",
+    "icons",
+    "browser_action",
+    "background",
+    "content_scripts",
+    "web_accessible_resources",
+    "permissions",
+    "incognito"
+  ],
+  "manifest top-level keys"
+);
+
+assertExactSet(
+  manifest.permissions,
+  [
+    "http://*/*",
+    "https://*/*",
+    "tabs",
+    "storage",
+    "webRequest",
+    "webRequestBlocking",
+    "webNavigation"
+  ],
+  "manifest.permissions"
+);
+assertExactSet(manifest.web_accessible_resources, ["blockedSite.html"], "manifest.web_accessible_resources");
+assert.strictEqual(manifest.manifest_version, 2);
+assert.strictEqual(manifest.incognito, "split");
+assert.strictEqual(manifest.content_scripts.length, 1);
+assertExactSet(
+  manifest.content_scripts[0].matches,
+  ["http://*/*", "https://*/*"],
+  "manifest.content_scripts[0].matches"
+);
+assert.deepStrictEqual(manifest.content_scripts[0].js, ["js/urlRules.js", "js/contentScript.js"]);
+assert.deepStrictEqual(manifest.background.scripts, ["js/urlRules.js", "js/background.js"]);
 
 assert.strictEqual(
   normalizeBlockedOrigin("https://Example.com/some/page?x=1"),
